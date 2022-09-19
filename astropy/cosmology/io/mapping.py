@@ -218,10 +218,11 @@ def mapping_identify(origin, format, *args, **kwargs):
     -------
     bool
     """
-    itis = False
-    if origin == "read":
-        itis = isinstance(args[1], Mapping) and (format in (None, "mapping"))
-    return itis
+    return (
+        isinstance(args[1], Mapping) and (format in (None, "mapping"))
+        if origin == "read"
+        else False
+    )
 
 
 # ===================================================================

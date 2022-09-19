@@ -23,28 +23,39 @@ KERNELS = []
 for shape in SHAPES_ODD + NOSHAPE:
     for width in WIDTHS:
 
-        KERNELS.append(Gaussian2DKernel(width,
-                                        x_size=shape[0],
-                                        y_size=shape[1],
-                                        mode='oversample',
-                                        factor=10))
-
-        KERNELS.append(Box2DKernel(width,
-                                   x_size=shape[0],
-                                   y_size=shape[1],
-                                   mode='oversample',
-                                   factor=10))
-
-        KERNELS.append(Tophat2DKernel(width,
-                                      x_size=shape[0],
-                                      y_size=shape[1],
-                                      mode='oversample',
-                                      factor=10))
-        KERNELS.append(Moffat2DKernel(width, 2,
-                                      x_size=shape[0],
-                                      y_size=shape[1],
-                                      mode='oversample',
-                                      factor=10))
+        KERNELS.extend(
+            (
+                Gaussian2DKernel(
+                    width,
+                    x_size=shape[0],
+                    y_size=shape[1],
+                    mode='oversample',
+                    factor=10,
+                ),
+                Box2DKernel(
+                    width,
+                    x_size=shape[0],
+                    y_size=shape[1],
+                    mode='oversample',
+                    factor=10,
+                ),
+                Tophat2DKernel(
+                    width,
+                    x_size=shape[0],
+                    y_size=shape[1],
+                    mode='oversample',
+                    factor=10,
+                ),
+                Moffat2DKernel(
+                    width,
+                    2,
+                    x_size=shape[0],
+                    y_size=shape[1],
+                    mode='oversample',
+                    factor=10,
+                ),
+            )
+        )
 
 
 class Test2DConvolutions:

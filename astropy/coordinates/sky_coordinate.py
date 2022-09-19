@@ -50,9 +50,10 @@ class SkyCoordInfo(MixinInfo):
     @property
     def unit(self):
         repr_data = self._repr_data
-        unit = ','.join(str(getattr(repr_data, comp).unit) or 'None'
-                        for comp in repr_data.components)
-        return unit
+        return ','.join(
+            str(getattr(repr_data, comp).unit) or 'None'
+            for comp in repr_data.components
+        )
 
     @property
     def _repr_data(self):
@@ -60,13 +61,14 @@ class SkyCoordInfo(MixinInfo):
             return None
 
         sc = self._parent
-        if (issubclass(sc.representation_type, SphericalRepresentation)
-                and isinstance(sc.data, UnitSphericalRepresentation)):
-            repr_data = sc.represent_as(sc.data.__class__, in_frame_units=True)
-        else:
-            repr_data = sc.represent_as(sc.representation_type,
-                                        in_frame_units=True)
-        return repr_data
+        return (
+            sc.represent_as(sc.data.__class__, in_frame_units=True)
+            if (
+                issubclass(sc.representation_type, SphericalRepresentation)
+                and isinstance(sc.data, UnitSphericalRepresentation)
+            )
+            else sc.represent_as(sc.representation_type, in_frame_units=True)
+        )
 
     def _represent_as_dict(self):
         sc = self._parent
@@ -148,7 +150,7 @@ class SkyCoordInfo(MixinInfo):
             try:
                 out[0] = skycoord[0]
             except Exception as err:
-                raise ValueError(f'Input skycoords are inconsistent.') from err
+                raise ValueError('Input skycoords are inconsistent.') from err
 
         # Set (merged) info attributes
         for attr in ('name', 'meta', 'description'):
@@ -294,8 +296,11 @@ class SkyCoord(ShapedLikeNDArray):
         # to make this the fastest way to create a SkyCoord instance. Many of
         # the classmethods implemented for performance enhancements will use
         # this as the initialization path
-        if (len(args) == 1 and len(kwargs) == 0
-                and isinstance(args[0], (BaseCoordinateFrame, SkyCoord))):
+        if (
+            len(args) == 1
+            and not kwargs
+            and isinstance(args[0], (BaseCoordinateFrame, SkyCoord))
+        ):
 
             coords = args[0]
             if isinstance(coords, SkyCoord):
@@ -313,11 +318,7 @@ class SkyCoord(ShapedLikeNDArray):
                 raise ValueError('Cannot initialize from a coordinate frame '
                                  'instance without coordinate data')
 
-            if copy:
-                self._sky_coord_frame = coords.copy()
-            else:
-                self._sky_coord_frame = coords
-
+            self._sky_coord_frame = coords.copy() if copy else coords
         else:
             # Get the frame instance without coordinate data but with all frame
             # attributes set - these could either have been passed in with the
@@ -425,11 +426,10 @@ class SkyCoord(ShapedLikeNDArray):
         def apply_method(value):
             if isinstance(value, ShapedLikeNDArray):
                 return value._apply(method, *args, **kwargs)
+            if callable(method):
+                return method(value, *args, **kwargs)
             else:
-                if callable(method):
-                    return method(value, *args, **kwargs)
-                else:
-                    return getattr(value, method)(*args, **kwargs)
+                return getattr(value, method)(*args, **kwargs)
 
         # create a new but empty instance, and copy over stuff
         new = super().__new__(self.__class__)
@@ -440,12 +440,12 @@ class SkyCoord(ShapedLikeNDArray):
             value = getattr(self, attr)
             if getattr(value, 'shape', ()):
                 value = apply_method(value)
-            elif method == 'copy' or method == 'flatten':
+            elif method in ['copy', 'flatten']:
                 # flatten should copy also for a single element array, but
                 # we cannot use it directly for array scalars, since it
                 # always returns a one-dimensional array. So, just copy.
                 value = copy.copy(value)
-            setattr(new, '_' + attr, value)
+            setattr(new, f'_{attr}', value)
 
         # Copy other 'info' attr only if it has actually been defined.
         # See PR #3898 for further explanation and justification, along
@@ -526,12 +526,13 @@ class SkyCoord(ShapedLikeNDArray):
             raise ValueError('axis must be 0')
 
         if not self.shape:
-            raise TypeError('cannot insert into scalar {} object'
-                            .format(self.__class__.__name__))
+            raise TypeError(f'cannot insert into scalar {self.__class__.__name__} object')
 
         if abs(idx0) > len(self):
-            raise IndexError('index {} is out of bounds for axis 0 with size {}'
-                             .format(idx0, len(self)))
+            raise IndexError(
+                f'index {idx0} is out of bounds for axis 0 with size {len(self)}'
+            )
+
 
         # Turn negative index into positive
         if idx0 < 0:
@@ -640,30 +641,31 @@ class SkyCoord(ShapedLikeNDArray):
         if isinstance(frame, SkyCoord):
             frame = frame.frame  # Change to underlying coord frame instance
 
-        if isinstance(frame, BaseCoordinateFrame):
-            new_frame_cls = frame.__class__
-            # Get frame attributes, allowing defaults to be overridden by
-            # explicitly set attributes of the source if ``merge_attributes``.
-            for attr in frame_transform_graph.frame_attributes:
-                self_val = getattr(self, attr, None)
-                frame_val = getattr(frame, attr, None)
-                if (frame_val is not None
-                    and not (merge_attributes
-                             and frame.is_frame_attr_default(attr))):
-                    frame_kwargs[attr] = frame_val
-                elif (self_val is not None
-                      and not self.is_frame_attr_default(attr)):
-                    frame_kwargs[attr] = self_val
-                elif frame_val is not None:
-                    frame_kwargs[attr] = frame_val
-        else:
+        if not isinstance(frame, BaseCoordinateFrame):
             raise ValueError('Transform `frame` must be a frame name, class, or instance')
 
+        new_frame_cls = frame.__class__
+            # Get frame attributes, allowing defaults to be overridden by
+            # explicitly set attributes of the source if ``merge_attributes``.
+        for attr in frame_transform_graph.frame_attributes:
+            self_val = getattr(self, attr, None)
+            frame_val = getattr(frame, attr, None)
+            if frame_val is not None and (
+                not merge_attributes or not frame.is_frame_attr_default(attr)
+            ):
+                frame_kwargs[attr] = frame_val
+            elif (self_val is not None
+                  and not self.is_frame_attr_default(attr)):
+                frame_kwargs[attr] = self_val
+            elif frame_val is not None:
+                frame_kwargs[attr] = frame_val
         # Get the composite transform to the new frame
         trans = frame_transform_graph.get_transform(self.frame.__class__, new_frame_cls)
         if trans is None:
-            raise ConvertError('Cannot transform from {} to {}'
-                               .format(self.frame.__class__, new_frame_cls))
+            raise ConvertError(
+                f'Cannot transform from {self.frame.__class__} to {new_frame_cls}'
+            )
+
 
         # Make a generic frame which will accept all the frame kwargs that
         # are provided and allow for transforming through intermediate frames
@@ -753,19 +755,17 @@ class SkyCoord(ShapedLikeNDArray):
             # self.obstime is not None and new_obstime is not None b/c of above
             # checks
             t2 = new_obstime
+        elif t1 is None:
+            # MAGIC NUMBER: if the current SkyCoord object has no obstime,
+            # assume J2000 to do the dt offset. This is not actually used
+            # for anything except a delta-t in starpm, so it's OK that it's
+            # not necessarily the "real" obstime
+            t1 = Time('J2000')
+            new_obstime = None  # we don't actually know the initial obstime
+            t2 = t1 + dt
         else:
-            # new_obstime is definitely None b/c of the above checks
-            if t1 is None:
-                # MAGIC NUMBER: if the current SkyCoord object has no obstime,
-                # assume J2000 to do the dt offset. This is not actually used
-                # for anything except a delta-t in starpm, so it's OK that it's
-                # not necessarily the "real" obstime
-                t1 = Time('J2000')
-                new_obstime = None  # we don't actually know the initial obstime
-                t2 = t1 + dt
-            else:
-                t2 = t1 + dt
-                new_obstime = t2
+            t2 = t1 + dt
+            new_obstime = t2
         # starpm wants tdb time
         t1 = t1.tdb
         t2 = t2.tdb
@@ -842,7 +842,7 @@ class SkyCoord(ShapedLikeNDArray):
                 if attr in self.frame.get_frame_attr_names():
                     return getattr(self.frame, attr)
                 else:
-                    return getattr(self, '_' + attr, None)
+                    return getattr(self, f'_{attr}', None)
 
             # Some attributes might not fall in the above category but still
             # are available through self._sky_coord_frame.
@@ -855,8 +855,9 @@ class SkyCoord(ShapedLikeNDArray):
                 return self.transform_to(attr)
 
         # Fail
-        raise AttributeError("'{}' object has no attribute '{}'"
-                             .format(self.__class__.__name__, attr))
+        raise AttributeError(
+            f"'{self.__class__.__name__}' object has no attribute '{attr}'"
+        )
 
     def __setattr__(self, attr, val):
         # This is to make anything available through __getattr__ immutable
@@ -875,7 +876,7 @@ class SkyCoord(ShapedLikeNDArray):
         if attr in frame_transform_graph.frame_attributes:
             # All possible frame attributes can be set, but only via a private
             # variable.  See __getattr__ above.
-            super().__setattr__('_' + attr, val)
+            super().__setattr__(f'_{attr}', val)
             # Validate it
             frame_transform_graph.frame_attributes[attr].__get__(self)
             # And add to set of extra attributes
@@ -903,7 +904,7 @@ class SkyCoord(ShapedLikeNDArray):
         if attr in frame_transform_graph.frame_attributes:
             # All possible frame attributes can be deleted, but need to remove
             # the corresponding private variable.  See __getattr__ above.
-            super().__delattr__('_' + attr)
+            super().__delattr__(f'_{attr}')
             # Also remove it from the set of extra attributes
             self._extra_frameattr_names -= {attr}
 
@@ -939,11 +940,11 @@ class SkyCoord(ShapedLikeNDArray):
         coonm = self.frame.__class__.__name__
         frameattrs = self.frame._frame_attrs_repr()
         if frameattrs:
-            frameattrs = ': ' + frameattrs
+            frameattrs = f': {frameattrs}'
 
         data = self.frame._data_repr()
         if data:
-            data = ': ' + data
+            data = f': {data}'
 
         return f'<{clsnm} ({coonm}{frameattrs}){data}>'
 
@@ -988,23 +989,25 @@ class SkyCoord(ShapedLikeNDArray):
         lonargs = {}
         latargs = {}
 
-        if style in styles:
-            lonargs.update(styles[style]['lonargs'])
-            latargs.update(styles[style]['latargs'])
-        else:
+        if style not in styles:
             raise ValueError(f"Invalid style.  Valid options are: {','.join(styles)}")
 
+        lonargs |= styles[style]['lonargs']
+        latargs |= styles[style]['latargs']
         lonargs.update(kwargs)
         latargs.update(kwargs)
 
         if np.isscalar(sph_coord.lon.value):
-            coord_string = (sph_coord.lon.to_string(**lonargs) +
-                            " " + sph_coord.lat.to_string(**latargs))
+            coord_string = f"{sph_coord.lon.to_string(**lonargs)} {sph_coord.lat.to_string(**latargs)}"
+
         else:
-            coord_string = []
-            for lonangle, latangle in zip(sph_coord.lon.ravel(), sph_coord.lat.ravel()):
-                coord_string += [(lonangle.to_string(**lonargs) +
-                                 " " + latangle.to_string(**latargs))]
+            coord_string = [
+                f"{lonangle.to_string(**lonargs)} {latangle.to_string(**latargs)}"
+                for lonangle, latangle in zip(
+                    sph_coord.lon.ravel(), sph_coord.lat.ravel()
+                )
+            ]
+
             if len(sph_coord.shape) > 1:
                 coord_string = np.array(coord_string).reshape(sph_coord.shape)
 
@@ -1083,11 +1086,13 @@ class SkyCoord(ShapedLikeNDArray):
             if other.frame.name != self.frame.name:
                 return False
 
-            for fattrnm in frame_transform_graph.frame_attributes:
-                if not BaseCoordinateFrame._frameattr_equiv(getattr(self, fattrnm),
-                                                            getattr(other, fattrnm)):
-                    return False
-            return True
+            return all(
+                BaseCoordinateFrame._frameattr_equiv(
+                    getattr(self, fattrnm), getattr(other, fattrnm)
+                )
+                for fattrnm in frame_transform_graph.frame_attributes
+            )
+
         else:
             # not a BaseCoordinateFrame nor a SkyCoord object
             raise TypeError("Tried to do is_equivalent_frame on something that "
@@ -1383,10 +1388,9 @@ class SkyCoord(ShapedLikeNDArray):
             raise TypeError('Can only get separation to another SkyCoord or a '
                             'coordinate frame with data')
 
-        res = match_coordinates_sky(self, catalogcoord,
-                                    nthneighbor=nthneighbor,
-                                    storekdtree='_kdtree_sky')
-        return res
+        return match_coordinates_sky(
+            self, catalogcoord, nthneighbor=nthneighbor, storekdtree='_kdtree_sky'
+        )
 
     def match_to_catalog_3d(self, catalogcoord, nthneighbor=1):
         """
@@ -1446,11 +1450,9 @@ class SkyCoord(ShapedLikeNDArray):
             raise TypeError('Can only get separation to another SkyCoord or a '
                             'coordinate frame with data')
 
-        res = match_coordinates_3d(self, catalogcoord,
-                                   nthneighbor=nthneighbor,
-                                   storekdtree='_kdtree_3d')
-
-        return res
+        return match_coordinates_3d(
+            self, catalogcoord, nthneighbor=nthneighbor, storekdtree='_kdtree_3d'
+        )
 
     def search_around_sky(self, searcharoundcoords, seplimit):
         """
@@ -1935,9 +1937,10 @@ class SkyCoord(ShapedLikeNDArray):
             v_sun = get_body_barycentric_posvel('sun', obstime)[1]
             v_origin_to_earth = v_earth - v_sun
         else:
-            raise ValueError("`kind` argument to radial_velocity_correction must "
-                             "be 'barycentric' or 'heliocentric', but got "
-                             "'{}'".format(kind))
+            raise ValueError(
+                f"`kind` argument to radial_velocity_correction must be 'barycentric' or 'heliocentric', but got '{kind}'"
+            )
+
 
         gcrs_p, gcrs_v = location.get_gcrs_posvel(obstime)
         # transforming to GCRS is not the correct thing to do here, since we don't want to
@@ -1952,36 +1955,35 @@ class SkyCoord(ShapedLikeNDArray):
             targcart = icrs_cart_novel - obs_icrs_cart
             targcart /= targcart.norm()
 
-        if kind == 'barycentric':
-            beta_obs = (v_origin_to_earth + gcrs_v) / speed_of_light
-            gamma_obs = 1 / np.sqrt(1 - beta_obs.norm()**2)
-            gr = location.gravitational_redshift(obstime)
-            # barycentric redshift according to eq 28 in Wright & Eastmann (2014),
-            # neglecting Shapiro delay and effects of the star's own motion
-            zb = gamma_obs * (1 + beta_obs.dot(targcart)) / (1 + gr/speed_of_light)
-            # try and get terms corresponding to stellar motion.
-            if icrs_cart.differentials:
-                try:
-                    ro = self.icrs.cartesian
-                    beta_star = ro.differentials['s'].to_cartesian() / speed_of_light
-                    # ICRS unit vector at coordinate epoch
-                    ro = ro.without_differentials()
-                    ro /= ro.norm()
-                    zb *= (1 + beta_star.dot(ro)) / (1 + beta_star.dot(targcart))
-                except u.UnitConversionError:
-                    warnings.warn("SkyCoord contains some velocity information, but not enough to "
-                                  "calculate the full space motion of the source, and so this has "
-                                  "been ignored for the purposes of calculating the radial velocity "
-                                  "correction. This can lead to errors on the order of metres/second.",
-                                  AstropyUserWarning)
-
-            zb = zb - 1
-            return zb * speed_of_light
-        else:
+        if kind != 'barycentric':
             # do a simpler correction ignoring time dilation and gravitational redshift
             # this is adequate since Heliocentric corrections shouldn't be used if
             # cm/s precision is required.
             return targcart.dot(v_origin_to_earth + gcrs_v)
+        beta_obs = (v_origin_to_earth + gcrs_v) / speed_of_light
+        gamma_obs = 1 / np.sqrt(1 - beta_obs.norm()**2)
+        gr = location.gravitational_redshift(obstime)
+        # barycentric redshift according to eq 28 in Wright & Eastmann (2014),
+        # neglecting Shapiro delay and effects of the star's own motion
+        zb = gamma_obs * (1 + beta_obs.dot(targcart)) / (1 + gr/speed_of_light)
+        # try and get terms corresponding to stellar motion.
+        if icrs_cart.differentials:
+            try:
+                ro = self.icrs.cartesian
+                beta_star = ro.differentials['s'].to_cartesian() / speed_of_light
+                # ICRS unit vector at coordinate epoch
+                ro = ro.without_differentials()
+                ro /= ro.norm()
+                zb *= (1 + beta_star.dot(ro)) / (1 + beta_star.dot(targcart))
+            except u.UnitConversionError:
+                warnings.warn("SkyCoord contains some velocity information, but not enough to "
+                              "calculate the full space motion of the source, and so this has "
+                              "been ignored for the purposes of calculating the radial velocity "
+                              "correction. This can lead to errors on the order of metres/second.",
+                              AstropyUserWarning)
+
+        zb = zb - 1
+        return zb * speed_of_light
 
     # Table interactions
     @classmethod
@@ -2058,7 +2060,7 @@ class SkyCoord(ShapedLikeNDArray):
 
             # now need to select among matches, also making sure we don't have
             # an exact match with another component
-            if len(matches) == 0:  # no matches
+            if not matches:  # no matches
                 continue
             elif len(matches) == 1:  # only one match
                 col_name = matches.pop()
@@ -2078,9 +2080,10 @@ class SkyCoord(ShapedLikeNDArray):
 
         for k, v in comp_kwargs.items():
             if k in coord_kwargs:
-                raise ValueError('Found column "{}" in table, but it was '
-                                 'already provided as "{}" keyword to '
-                                 'guess_from_table function.'.format(v.name, k))
+                raise ValueError(
+                    f'Found column "{v.name}" in table, but it was already provided as "{k}" keyword to guess_from_table function.'
+                )
+
             else:
                 coord_kwargs[k] = v
 

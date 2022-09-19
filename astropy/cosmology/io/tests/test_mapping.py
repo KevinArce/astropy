@@ -93,16 +93,16 @@ class ToFromMappingTestMixin(ToFromTestMixinBase):
         # Metadata is 'separate' from main mapping
         m = to_format('mapping', move_from_meta=False)
         assert "meta" in m.keys()
-        assert not any([k in m for k in m["meta"]])  # Not added to main
+        assert all(k not in m for k in m["meta"])
 
         assert m == default  # False is the default option
 
         # Metadata is mixed into main mapping.
         m = to_format('mapping', move_from_meta=True)
         assert "meta" not in m.keys()
-        assert all([k in m for k in default["meta"]])  # All added to main
+        assert all(k in m for k in default["meta"])
         #  The parameters take precedence over the metadata
-        assert all([np.array_equal(v, m[k]) for k, v in default.items() if k != "meta"])
+        assert all(np.array_equal(v, m[k]) for k, v in default.items() if k != "meta")
 
     def test_tofrom_mapping_move_tofrom_meta(self, cosmo, to_format, from_format):
         """Test roundtrip of ``move_from/to_meta`` in ``to/from_mapping()``."""
@@ -167,7 +167,7 @@ class ToFromMappingTestMixin(ToFromTestMixinBase):
         got2 = Cosmology.from_format(m, format="mapping", cosmology=cosmo.__class__)
         got3 = Cosmology.from_format(m, format="mapping", cosmology=cosmo.__class__.__qualname__)
 
-        assert (got == got2) and (got2 == got3)  # internal consistency
+        assert got == got2 == got3
 
         # not equal, because Tcmb0 is changed, which also changes m_nu
         assert got != cosmo
@@ -188,7 +188,7 @@ class ToFromMappingTestMixin(ToFromTestMixinBase):
         assert not isinstance(obj, Cosmology)
 
         is_equiv = cosmo.is_equivalent(obj, format=format)
-        assert is_equiv is (True if format is not False else False)
+        assert is_equiv is (format is not False)
 
 
 class TestToFromMapping(ToFromDirectTestBase, ToFromMappingTestMixin):

@@ -157,7 +157,7 @@ class TestArithmetic():
         with pytest.raises(TypeError):
             in_rep * in_rep
         with pytest.raises(TypeError):
-            dict() * in_rep
+            {} * in_rep
 
     def test_mul_div_unit_spherical(self):
         s1 = self.unit_spherical * self.distance
@@ -998,8 +998,11 @@ class TestCartesianDifferential():
             o_c = differential.to_cartesian(base=s)
             o_c2 = differential.to_cartesian()
             assert np.all(representation_equal(o_c, o_c2))
-            assert all(np.all(getattr(differential, 'd_'+c) == getattr(o_c, c))
-                       for c in ('x', 'y', 'z'))
+            assert all(
+                np.all(getattr(differential, f'd_{c}') == getattr(o_c, c))
+                for c in ('x', 'y', 'z')
+            )
+
             differential2 = CartesianDifferential.from_cartesian(o_c)
             assert np.all(representation_equal(differential2, differential))
             differential3 = CartesianDifferential.from_cartesian(o_c, base=o_c)

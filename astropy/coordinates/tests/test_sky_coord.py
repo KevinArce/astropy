@@ -94,10 +94,18 @@ for rt_frame0 in rt_frames:
         for equinox0 in (None, 'J1975.0'):
             for obstime0 in (None, 'J1980.0'):
                 for equinox1 in (None, 'J1975.0'):
-                    for obstime1 in (None, 'J1980.0'):
-                        rt_sets.append((rt_frame0, rt_frame1,
-                                        equinox0, equinox1,
-                                        obstime0, obstime1))
+                    rt_sets.extend(
+                        (
+                            rt_frame0,
+                            rt_frame1,
+                            equinox0,
+                            equinox1,
+                            obstime0,
+                            obstime1,
+                        )
+                        for obstime1 in (None, 'J1980.0')
+                    )
+
 rt_args = ('frame0', 'frame1', 'equinox0', 'equinox1', 'obstime0', 'obstime1')
 
 
@@ -362,8 +370,8 @@ def test_equal():
     ne = sc1 != sc2
     assert np.all(eq == [True, False])
     assert np.all(ne == [False, True])
-    assert (sc1[0] == sc2[0]) == True  # noqa  (numpy True not Python True)
-    assert (sc1[0] != sc2[0]) == False  # noqa
+    assert sc1[0] == sc2[0]
+    assert sc1[0] == sc2[0]
 
     # Broadcasting
     eq = sc1[0] == sc2
@@ -379,15 +387,15 @@ def test_equal():
     ne = sc1 != sc2
     assert np.all(eq == [True, False])
     assert np.all(ne == [False, True])
-    assert (sc1[0] == sc2[0]) == True  # noqa
-    assert (sc1[0] != sc2[0]) == False  # noqa
+    assert sc1[0] == sc2[0]
+    assert sc1[0] == sc2[0]
 
 
 def test_equal_different_type():
     sc1 = SkyCoord([1, 2]*u.deg, [3, 4]*u.deg, obstime='B1955')
     # Test equals and not equals operators against different types
     assert sc1 != 'a string'
-    assert not (sc1 == 'a string')
+    assert sc1 != 'a string'
 
 
 def test_equal_exceptions():
@@ -741,7 +749,7 @@ def test_ops():
     assert len(sc_arr[:1]) == 1
     # A scalar shouldn't be indexable
     with pytest.raises(TypeError):
-        sc[0:]
+        sc[:]
     # but it should be possible to just get an item
     sc_item = sc[()]
     assert sc_item.shape == ()

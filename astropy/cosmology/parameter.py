@@ -84,7 +84,7 @@ class Parameter:
     def __set_name__(self, cosmo_cls, name):
         # attribute name on container cosmology class
         self._attr_name = name
-        self._attr_name_private = "_" + name
+        self._attr_name_private = f"_{name}"
 
     @property
     def name(self):
@@ -301,13 +301,14 @@ class Parameter:
         >>> p1 != 2
         True
         """
-        if not isinstance(other, Parameter):
-            return NotImplemented
-        # Check equality on all `_init_arguments` & `name`.
-        # Need to compare the processed arguments because the inputs are many-
-        # to-one, e.g. `fvalidate` can be a string or the equivalent function.
-        return ((self._get_init_arguments(True) == other._get_init_arguments(True))
-                and (self.name == other.name))
+        return (
+            (
+                (self._get_init_arguments(True) == other._get_init_arguments(True))
+                and (self.name == other.name)
+            )
+            if isinstance(other, Parameter)
+            else NotImplemented
+        )
 
     def __repr__(self):
         """String representation.

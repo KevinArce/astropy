@@ -173,7 +173,7 @@ def test_redshift_hubble():
 def test_redshift_distance(kind):
     """Test :func:`astropy.cosmology.units.redshift_distance`."""
     z = 15 * cu.redshift
-    d = getattr(Planck13, kind + "_distance")(z)
+    d = getattr(Planck13, f"{kind}_distance")(z)
 
     equivalency = cu.redshift_distance(cosmology=Planck13, kind=kind)
 
@@ -352,7 +352,7 @@ class Test_with_redshift:
         """Test distance equivalency."""
         cosmo = Planck13
         z = 15 * cu.redshift
-        dist = getattr(cosmo, kind + "_distance")(z)
+        dist = getattr(cosmo, f"{kind}_distance")(z)
 
         default_cosmo = default_cosmology.get()
         assert default_cosmo != cosmo  # shows changing default
@@ -365,9 +365,11 @@ class Test_with_redshift:
         # showing the answer changes if the cosmology changes
         # this test uses the default cosmology
         equivalency = cu.with_redshift(distance=kind)
-        assert_quantity_allclose(z.to(u.Mpc, equivalency),
-                                 getattr(default_cosmo, kind + "_distance")(z))
-        assert not u.allclose(getattr(default_cosmo, kind + "_distance")(z), dist)
+        assert_quantity_allclose(
+            z.to(u.Mpc, equivalency), getattr(default_cosmo, f"{kind}_distance")(z)
+        )
+
+        assert not u.allclose(getattr(default_cosmo, f"{kind}_distance")(z), dist)
 
         # 2) Specifying the cosmology
         equivalency = cu.with_redshift(cosmo, distance=kind)

@@ -240,6 +240,8 @@ __old_angle_utilities_funcs = ['check_hms_ranges', 'degrees_to_dms',
                                'radians_to_hms', 'radians_to_hours',
                                'sexagesimal_to_string']
 for funcname in __old_angle_utilities_funcs:
-    vars()[funcname] = deprecated(name='astropy.coordinates.angle_utilities.' + funcname,
-                                  alternative='astropy.coordinates.angle_formats.' + funcname,
-                                  since='v4.3')(getattr(angle_formats, funcname))
+    vars()[funcname] = deprecated(
+        name=f'astropy.coordinates.angle_utilities.{funcname}',
+        alternative=f'astropy.coordinates.angle_formats.{funcname}',
+        since='v4.3',
+    )(getattr(angle_formats, funcname))

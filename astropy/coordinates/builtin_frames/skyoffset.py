@@ -43,7 +43,7 @@ def make_skyoffset_cls(framecls):
         return _skyoffset_cache[framecls]
 
     # Create a new SkyOffsetFrame subclass for this frame class.
-    name = 'SkyOffset' + framecls.__name__
+    name = f'SkyOffset{framecls.__name__}'
     _SkyOffsetFramecls = type(
         name, (SkyOffsetFrame, framecls),
         {'origin': CoordinateAttribute(frame=framecls, default=None),

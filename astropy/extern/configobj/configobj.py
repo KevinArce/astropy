@@ -127,7 +127,7 @@ def getObj(s):
     global compiler
     if compiler is None:
         import compiler
-    s = "a=" + s
+    s = f"a={s}"
     p = compiler.parse(s)
     return p.getChildren()[1].getChildren()[0].getChildren()[1]
 
@@ -150,11 +150,8 @@ class Builder(object):
         return o.value
 
     def build_Dict(self, o):
-        d = {}
         i = iter(map(self.build, o.getChildren()))
-        for el in i:
-            d[el] = next(i)
-        return d
+        return {el: next(i) for el in i}
 
     def build_Tuple(self, o):
         return tuple(self.build_List(o))
@@ -300,7 +297,7 @@ class InterpolationEngine(object):
 
     def interpolate(self, key, value):
         # short-cut
-        if not self._cookie in value:
+        if self._cookie not in value:
             return value
 
         def recursive_interpolate(key, value, section, backtrail):
@@ -326,12 +323,7 @@ class InterpolationEngine(object):
                 # The actual parsing of the match is implementation-dependent,
                 # so delegate to our helper function
                 k, v, s = self._parse_match(match)
-                if k is None:
-                    # That's the signal that no further interpolation is needed
-                    replacement = v
-                else:
-                    # Further interpolation may be needed to obtain final value
-                    replacement = recursive_interpolate(k, v, s, backtrail)
+                replacement = v if k is None else recursive_interpolate(k, v, s, backtrail)
                 # Replace the matched string with its final value
                 start, end = match.span()
                 value = ''.join((value[:start], replacement, value[end:]))
@@ -555,9 +547,8 @@ class Section(dict):
                 return self._interpolate(key, val)
             if isinstance(val, list):
                 def _check(entry):
-                    if isinstance(entry, str):
-                        return self._interpolate(key, entry)
-                    return entry
+                    return self._interpolate(key, entry) if isinstance(entry, str) else entry
+
                 new = [_check(entry) for entry in val]
                 if new != val:
                     return new
@@ -743,8 +734,13 @@ class Section(dict):
                 return self[key]
             except MissingInterpolationOption:
                 return dict.__getitem__(self, key)
-        return '{%s}' % ', '.join([('%s: %s' % (repr(key), repr(_getval(key))))
-            for key in (self.scalars + self.sections)])
+
+        return '{%s}' % ', '.join(
+            [
+                f'{repr(key)}: {repr(_getval(key))}'
+                for key in (self.scalars + self.sections)
+            ]
+        )
 
     __str__ = __repr__
     __str__.__doc__ = "x.__str__() <==> str(x)"
@@ -896,9 +892,8 @@ class Section(dict):
             except Exception:
                 if raise_errors:
                     raise
-                else:
-                    entry = self.scalars[i]
-                    out[entry] = False
+                entry = self.scalars[i]
+                out[entry] = False
         # then sections
         for i in range(len(self.sections)):
             entry = self.sections[i]
@@ -908,9 +903,8 @@ class Section(dict):
                 except Exception:
                     if raise_errors:
                         raise
-                    else:
-                        entry = self.sections[i]
-                        out[entry] = False
+                    entry = self.sections[i]
+                    out[entry] = False
                 # bound again in case name has changed
                 entry = self.sections[i]
             # previous result is discarded
@@ -1028,9 +1022,7 @@ class Section(dict):
         [1]
         """
         result = self[key]
-        if isinstance(result, (tuple, list)):
-            return list(result)
-        return [result]
+        return list(result) if isinstance(result, (tuple, list)) else [result]
 
 
     def restore_default(self, key):
@@ -1302,7 +1294,7 @@ class ConfigObj(Section):
         self._parse(content)
         # if we had any errors, now is the time to raise them
         if self._errors:
-            info = "at line %s." % self._errors[0].line_number
+            info = f"at line {self._errors[0].line_number}."
             if len(self._errors) > 1:
                 msg = "Parsing failed with several errors.\nFirst error %s" % info
                 error = ConfigObjError(msg)
@@ -1361,9 +1353,16 @@ class ConfigObj(Section):
                 return self[key]
             except MissingInterpolationOption:
                 return dict.__getitem__(self, key)
-        return ('%s({%s})' % (self.__class__.__name__,
-                ', '.join([('%s: %s' % (repr(key), repr(_getval(key))))
-                for key in (self.scalars + self.sections)])))
+
+        return '%s({%s})' % (
+            self.__class__.__name__,
+            ', '.join(
+                [
+                    f'{repr(key)}: {repr(_getval(key))}'
+                    for key in (self.scalars + self.sections)
+                ]
+            ),
+        )
 
 
     def _handle_bom(self, infile):
@@ -1396,11 +1395,7 @@ class ConfigObj(Section):
             # just decode
             return self._decode(infile, self.encoding)
 
-        if isinstance(infile, (list, tuple)):
-            line = infile[0]
-        else:
-            line = infile
-
+        line = infile[0] if isinstance(infile, (list, tuple)) else infile
         if isinstance(line, str):
             # it's already decoded and there's no need to do anything
             # else, just use the _decode utility method to handle
@@ -1449,27 +1444,26 @@ class ConfigObj(Section):
             if not isinstance(line, bytes) or not line.startswith(BOM):
                 # didn't specify a BOM, or it's not a bytestring
                 continue
-            else:
-                # BOM discovered
-                self.encoding = final_encoding
-                if not final_encoding:
-                    self.BOM = True
-                    # UTF8
-                    # remove BOM
-                    newline = line[len(BOM):]
-                    if isinstance(infile, (list, tuple)):
-                        infile[0] = newline
-                    else:
-                        infile = newline
-                    # UTF-8
-                    if isinstance(infile, str):
-                        return infile.splitlines(True)
-                    elif isinstance(infile, bytes):
-                        return infile.decode('utf-8').splitlines(True)
-                    else:
-                        return self._decode(infile, 'utf-8')
-                # UTF16 - have to decode
-                return self._decode(infile, encoding)
+            # BOM discovered
+            self.encoding = final_encoding
+            if not final_encoding:
+                self.BOM = True
+                # UTF8
+                # remove BOM
+                newline = line[len(BOM):]
+                if isinstance(infile, (list, tuple)):
+                    infile[0] = newline
+                else:
+                    infile = newline
+                # UTF-8
+                if isinstance(infile, str):
+                    return infile.splitlines(True)
+                elif isinstance(infile, bytes):
+                    return infile.decode('utf-8').splitlines(True)
+                else:
+                    return self._decode(infile, 'utf-8')
+            # UTF16 - have to decode
+            return self._decode(infile, encoding)
 
         # No BOM discovered and no encoding specified, default to UTF-8
         if isinstance(infile, bytes):
@@ -1525,12 +1519,7 @@ class ConfigObj(Section):
         Used by ``stringify`` within validate, to turn non-string values
         into strings.
         """
-        if not isinstance(value, str):
-            # intentially 'str' because it's just whatever the "normal"
-            # string type is for the python version we're dealing with
-            return str(value)
-        else:
-            return value
+        return value if isinstance(value, str) else str(value)
 
 
     def _parse(self, infile):
@@ -1644,35 +1633,36 @@ class ConfigObj(Section):
                             try:
                                 value = unrepr(value)
                             except Exception as e:
-                                if type(e) == UnknownType:
-                                    msg = 'Unknown name or type in value'
-                                else:
-                                    msg = 'Parse error from unrepr-ing multiline value'
+                                msg = (
+                                    'Unknown name or type in value'
+                                    if type(e) == UnknownType
+                                    else 'Parse error from unrepr-ing multiline value'
+                                )
+
                                 self._handle_error(msg, UnreprError, infile,
                                     cur_index)
                                 continue
+                elif self.unrepr:
+                    comment = ''
+                    try:
+                        value = unrepr(value)
+                    except Exception as e:
+                        if isinstance(e, UnknownType):
+                            msg = 'Unknown name or type in value'
+                        else:
+                            msg = 'Parse error from unrepr-ing value'
+                        self._handle_error(msg, UnreprError, infile,
+                            cur_index)
+                        continue
                 else:
-                    if self.unrepr:
-                        comment = ''
-                        try:
-                            value = unrepr(value)
-                        except Exception as e:
-                            if isinstance(e, UnknownType):
-                                msg = 'Unknown name or type in value'
-                            else:
-                                msg = 'Parse error from unrepr-ing value'
-                            self._handle_error(msg, UnreprError, infile,
-                                cur_index)
-                            continue
-                    else:
-                        # extract comment and lists
-                        try:
-                            (value, comment) = self._handle_value(value)
-                        except SyntaxError:
-                            self._handle_error(
-                                'Parse error in value',
-                                ParseError, infile, cur_index)
-                            continue
+                    # extract comment and lists
+                    try:
+                        (value, comment) = self._handle_value(value)
+                    except SyntaxError:
+                        self._handle_error(
+                            'Parse error in value',
+                            ParseError, infile, cur_index)
+                        continue
                 #
                 key = self._unquote(key)
                 if key in this_section:
@@ -1776,7 +1766,7 @@ class ConfigObj(Section):
             if not value:
                 return ','
             elif len(value) == 1:
-                return self._quote(value[0], multiline=False) + ','
+                return f'{self._quote(value[0], multiline=False)},'
             return ', '.join([self._quote(val, multiline=False)
                 for val in value])
         if not isinstance(value, str):
@@ -1832,11 +1822,7 @@ class ConfigObj(Section):
     def _get_triple_quote(self, value):
         if (value.find('"""') != -1) and (value.find("'''") != -1):
             raise ConfigObjError('Value "%s" cannot be safely quoted.' % value)
-        if value.find('"""') == -1:
-            quot = tdquot
-        else:
-            quot = tsquot
-        return quot
+        return tdquot if value.find('"""') == -1 else tsquot
 
 
     def _handle_value(self, value):
@@ -1936,9 +1922,9 @@ class ConfigObj(Section):
             except ConfigObjError as e:
                 # FIXME: Should these errors have a reference
                 #        to the already parsed ConfigObj ?
-                raise ConfigspecError('Parsing configspec failed: %s' % e)
+                raise ConfigspecError(f'Parsing configspec failed: {e}')
             except IOError as e:
-                raise IOError('Reading configspec failed: %s' % e)
+                raise IOError(f'Reading configspec failed: {e}')
 
         self.configspec = configspec
 
@@ -1975,10 +1961,12 @@ class ConfigObj(Section):
     def _write_line(self, indent_string, entry, this_entry, comment):
         """Write an individual line, for the write method"""
         # NOTE: the calls to self._quote here handles non-StringType values.
-        if not self.unrepr:
-            val = self._decode_element(self._quote(this_entry))
-        else:
-            val = repr(this_entry)
+        val = (
+            repr(this_entry)
+            if self.unrepr
+            else self._decode_element(self._quote(this_entry))
+        )
+
         return '%s%s%s%s%s' % (indent_string,
                                self._decode_element(self._quote(entry, multiline=False)),
                                self._a_to_u(' = '),
@@ -2239,7 +2227,7 @@ class ConfigObj(Section):
             if entry in ('__many__', '___many___'):
                 # reserved names
                 continue
-            if (not entry in section.scalars) or (entry in section.defaults):
+            if entry not in section.scalars or entry in section.defaults:
                 # missing entries
                 # or entries from defaults
                 missing = True
@@ -2350,11 +2338,11 @@ class ConfigObj(Section):
             raise ReloadError()
 
         filename = self.filename
-        current_options = {}
-        for entry in OPTION_DEFAULTS:
-            if entry == 'configspec':
-                continue
-            current_options[entry] = getattr(self, entry)
+        current_options = {
+            entry: getattr(self, entry)
+            for entry in OPTION_DEFAULTS
+            if entry != 'configspec'
+        }
 
         configspec = self._original_configspec
         current_options['configspec'] = configspec
@@ -2464,9 +2452,8 @@ def get_extra_values(conf, _prepend=()):
     NOTE: If you call ``get_extra_values`` on a ConfigObj instance that hasn't
     been validated it will return an empty list.
     """
-    out = []
+    out = [(_prepend, name) for name in conf.extra_values]
 
-    out.extend([(_prepend, name) for name in conf.extra_values])
     for name in conf.sections:
         if name not in conf.extra_values:
             out.extend(get_extra_values(conf[name], _prepend + (name,)))

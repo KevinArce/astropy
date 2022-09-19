@@ -126,6 +126,7 @@
     A badly formatted set of arguments will raise a ``VdtParamError``.
 """
 
+
 __version__ = '1.0.1'
 
 
@@ -257,7 +258,7 @@ _paramstring = r'''
     )
     '''
 
-_matchstring = '^%s*' % _paramstring
+_matchstring = f'^{_paramstring}*'
 
 # Python pre 2.2.1 doesn't have bool
 try:
@@ -265,10 +266,7 @@ try:
 except NameError:
     def bool(val):
         """Simple boolean equivalent function. """
-        if val:
-            return 1
-        else:
-            return 0
+        return 1 if val else 0
 
 
 def dottedQuadToNum(ip):
@@ -297,7 +295,7 @@ def dottedQuadToNum(ip):
         return struct.unpack('!L',
             socket.inet_aton(ip.strip()))[0]
     except socket.error:
-        raise ValueError('Not a good dotted-quad IP: %s' % ip)
+        raise ValueError(f'Not a good dotted-quad IP: {ip}')
     return
 
 
@@ -345,12 +343,12 @@ def numToDottedQuad(num):
 
     # no need to intercept here, 4294967295L is fine
     if num > long(4294967295) or num < 0:
-        raise ValueError('Not a good numeric IP: %s' % num)
+        raise ValueError(f'Not a good numeric IP: {num}')
     try:
         return socket.inet_ntoa(
             struct.pack('!L', long(num)))
     except (socket.error, struct.error, OverflowError):
-        raise ValueError('Not a good numeric IP: %s' % num)
+        raise ValueError(f'Not a good numeric IP: {num}')
 
 
 class ValidateError(Exception):
@@ -584,7 +582,7 @@ class Validator(object):
             'force_list': force_list,
         }
         if functions is not None:
-            self.functions.update(functions)
+            self.functions |= functions
         # tekNico: for use by ConfigObj
         self.baseErrorClass = ValidateError
         self._cache = {}
@@ -658,39 +656,35 @@ class Validator(object):
 
 
     def _parse_check(self, check):
-        fun_match = self._func_re.match(check)
-        if fun_match:
-            fun_name = fun_match.group(1)
-            arg_string = fun_match.group(2)
-            arg_match = self._matchfinder.match(arg_string)
-            if arg_match is None:
-                # Bad syntax
-                raise VdtParamError('Bad syntax in check "%s".' % check)
-            fun_args = []
-            fun_kwargs = {}
-            # pull out args of group 2
-            for arg in self._paramfinder.findall(arg_string):
-                # args may need whitespace removing (before removing quotes)
-                arg = arg.strip()
-                listmatch = self._list_arg.match(arg)
-                if listmatch:
-                    key, val = self._list_handle(listmatch)
-                    fun_kwargs[key] = val
-                    continue
-                keymatch = self._key_arg.match(arg)
-                if keymatch:
-                    val = keymatch.group(2)
-                    if not val in ("'None'", '"None"'):
-                        # Special case a quoted None
-                        val = self._unquote(val)
-                    fun_kwargs[keymatch.group(1)] = val
-                    continue
-
-                fun_args.append(self._unquote(arg))
-        else:
+        if not (fun_match := self._func_re.match(check)):
             # allows for function names without (args)
             return check, (), {}, None
 
+        fun_name = fun_match.group(1)
+        arg_string = fun_match.group(2)
+        arg_match = self._matchfinder.match(arg_string)
+        if arg_match is None:
+            # Bad syntax
+            raise VdtParamError('Bad syntax in check "%s".' % check)
+        fun_args = []
+        fun_kwargs = {}
+            # pull out args of group 2
+        for arg in self._paramfinder.findall(arg_string):
+            # args may need whitespace removing (before removing quotes)
+            arg = arg.strip()
+            if listmatch := self._list_arg.match(arg):
+                key, val = self._list_handle(listmatch)
+                fun_kwargs[key] = val
+                continue
+            if keymatch := self._key_arg.match(arg):
+                val = keymatch.group(2)
+                if val not in ("'None'", '"None"'):
+                    # Special case a quoted None
+                    val = self._unquote(val)
+                fun_kwargs[keymatch.group(1)] = val
+                continue
+
+            fun_args.append(self._unquote(arg))
         # Default must be deleted if the value is specified too,
         # otherwise the check function will get a spurious "default" keyword arg
         default = fun_kwargs.pop('default', None)
@@ -706,11 +700,9 @@ class Validator(object):
 
     def _list_handle(self, listmatch):
         """Take apart a ``keyword=list('val, 'val')`` type string."""
-        out = []
         name = listmatch.group(1)
         args = listmatch.group(2)
-        for arg in self._list_members.findall(args):
-            out.append(self._unquote(arg))
+        out = [self._unquote(arg) for arg in self._list_members.findall(args)]
         return name, out
 
 
@@ -1328,7 +1320,7 @@ def is_option(value, *options):
     """
     if not isinstance(value, string_type):
         raise VdtTypeError(value)
-    if not value in options:
+    if value not in options:
         raise VdtValueError(value)
     return value
 
@@ -1469,4 +1461,4 @@ if __name__ == '__main__':
     failures, tests = doctest.testmod(
         m, globs=globs,
         optionflags=doctest.IGNORE_EXCEPTION_DETAIL | doctest.ELLIPSIS)
-    assert not failures, '{} failures out of {} tests'.format(failures, tests)
+    assert not failures, f'{failures} failures out of {tests} tests'

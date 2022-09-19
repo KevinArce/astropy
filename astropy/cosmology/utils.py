@@ -46,8 +46,11 @@ def vectorize_redshift_method(func=None, nin=1):
         """
         # process inputs
         # TODO! quantity-aware vectorization can simplify this.
-        zs = [z if not isinstance(z, Quantity) else z.to_value(cu.redshift)
-              for z in args[:nin]]
+        zs = [
+            z.to_value(cu.redshift) if isinstance(z, Quantity) else z
+            for z in args[:nin]
+        ]
+
         # scalar inputs
         if all(isinstance(z, (Number, np.generic)) for z in zs):
             return func(self, *zs, *args[nin:], **kwargs)
@@ -135,8 +138,6 @@ def aszarr(z):
     if isinstance(z, (Number, np.generic)):  # scalars
         return z
     elif hasattr(z, "shape"):  # ducktypes NumPy array
-        if hasattr(z, "unit"):  # Quantity Column
-            return (z << cu.redshift).value  # for speed only use enabled equivs
-        return z
+        return (z << cu.redshift).value if hasattr(z, "unit") else z
     # not one of the preferred types: Number / array ducktype
     return Quantity(z, cu.redshift).value

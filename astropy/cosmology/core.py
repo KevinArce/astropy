@@ -34,14 +34,11 @@ __doctest_requires__ = {}  # needed until __getattr__ removed
 # Parameters
 
 # registry of cosmology classes with {key=name : value=class}
-_COSMOLOGY_CLASSES = dict()
+_COSMOLOGY_CLASSES = {}
 
 # typing
 _CosmoT = TypeVar("_CosmoT", bound="Cosmology")
 _FlatCosmoT = TypeVar("_FlatCosmoT", bound="FlatCosmologyMixin")
-
-##############################################################################
-
 
 class CosmologyError(Exception):
     pass
@@ -120,10 +117,10 @@ class Cosmology(metaclass=abc.ABCMeta):
         _COSMOLOGY_CLASSES[cls.__qualname__] = cls
 
     @classproperty(lazy=True)
-    def _init_signature(cls):
+    def _init_signature(self):
         """Initialization signature (without 'self')."""
         # get signature, dropping "self" by taking arguments [1:]
-        sig = inspect.signature(cls.__init__)
+        sig = inspect.signature(self.__init__)
         sig = sig.replace(parameters=list(sig.parameters.values())[1:])
         return sig
 
@@ -190,7 +187,7 @@ class Cosmology(metaclass=abc.ABCMeta):
 
         # There are changed parameter or metadata values.
         # The name needs to be changed accordingly, if it wasn't already.
-        _modname = self.name + " (modified)"
+        _modname = f"{self.name} (modified)"
         kwargs.setdefault("name", (_modname if self.name is not None else None))
 
         # mix new meta into existing, preferring the former.
@@ -321,12 +318,12 @@ class Cosmology(metaclass=abc.ABCMeta):
         if other.__class__ is not self.__class__:
             return NotImplemented  # allows other.__equiv__
 
-        # Check all parameters in 'other' match those in 'self' and 'other' has
-        # no extra parameters (latter part should never happen b/c same class)
-        params_eq = (set(self.__all_parameters__) == set(other.__all_parameters__)
-                     and all(np.all(getattr(self, k) == getattr(other, k))
-                             for k in self.__all_parameters__))
-        return params_eq
+        return set(self.__all_parameters__) == set(
+            other.__all_parameters__
+        ) and all(
+            np.all(getattr(self, k) == getattr(other, k))
+            for k in self.__all_parameters__
+        )
 
     def __eq__(self, other: Any, /) -> bool:
         """Check equality between Cosmologies.
@@ -346,18 +343,18 @@ class Cosmology(metaclass=abc.ABCMeta):
         if other.__class__ is not self.__class__:
             return NotImplemented  # allows other.__eq__
 
-        eq = (
+        return (
             # non-Parameter checks: name
             self.name == other.name
             # check all parameters in 'other' match those in 'self' and 'other'
             # has no extra parameters (latter part should never happen b/c same
             # class) TODO! element-wise when there are array cosmologies
             and set(self.__all_parameters__) == set(other.__all_parameters__)
-            and all(np.all(getattr(self, k) == getattr(other, k))
-                    for k in self.__all_parameters__)
+            and all(
+                np.all(getattr(self, k) == getattr(other, k))
+                for k in self.__all_parameters__
+            )
         )
-
-        return eq
 
     # ---------------------------------------------------------------
 
@@ -451,10 +448,7 @@ class FlatCosmologyMixin(metaclass=abc.ABCMeta):
                 f"cannot create a consistent non-flat class resolution order "
                 f"for {_kls} with bases {nonflat} at the same inheritance level."
             )
-        if not nonflat:  # e.g. FlatFLRWMixin(FlatCosmologyMixin)
-            return None
-
-        return nonflat.pop()
+        return nonflat.pop() if nonflat else None
 
     __nonflatclass__ = classproperty(_get_nonflat_cls, lazy=True,
                                      doc="Return the corresponding non-flat class.")
@@ -551,21 +545,21 @@ class FlatCosmologyMixin(metaclass=abc.ABCMeta):
         # check if `other` is the non-flat version of this class this makes the
         # assumption that any further subclass of a flat cosmo keeps the same
         # physics.
-        if not issubclass(other.__class__, self.__nonflatclass__):
-            return NotImplemented
-
-        # Check if have equivalent parameters and all parameters in `other`
-        # match those in `self`` and `other`` has no extra parameters.
-        params_eq = (
-            set(self.__all_parameters__) == set(other.__all_parameters__)  # no extra
-            # equal
-            and all(np.all(getattr(self, k) == getattr(other, k))
-                    for k in self.__parameters__)
-            # flatness check
-            and other.is_flat
+        return (
+            (
+                set(self.__all_parameters__)
+                == set(other.__all_parameters__)  # no extra
+                # equal
+                and all(
+                    np.all(getattr(self, k) == getattr(other, k))
+                    for k in self.__parameters__
+                )
+                # flatness check
+                and other.is_flat
+            )
+            if issubclass(other.__class__, self.__nonflatclass__)
+            else NotImplemented
         )
-
-        return params_eq
 
 # -----------------------------------------------------------------------------
 

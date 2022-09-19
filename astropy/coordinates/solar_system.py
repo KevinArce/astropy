@@ -135,14 +135,14 @@ class solar_system_ephemeris(ScienceState):
         return cls._kernel
 
     @classproperty
-    def kernel(cls):
-        return cls.get_kernel(cls._value)
+    def kernel(self):
+        return self.get_kernel(self._value)
 
     @classproperty
-    def bodies(cls):
-        if cls._value is None:
+    def bodies(self):
+        if self._value is None:
             return None
-        if cls._value.lower() == 'builtin':
+        if self._value.lower() == 'builtin':
             return (('earth', 'sun', 'moon') +
                     tuple(PLAN94_BODY_NAME_TO_PLANET_INDEX.keys()))
         else:
@@ -179,8 +179,10 @@ def _get_kernel(value):
         try:
             urlparse(value)
         except Exception:
-            raise ValueError('{} was not one of the standard strings and '
-                             'could not be parsed as a file path or URL'.format(value))
+            raise ValueError(
+                f'{value} was not one of the standard strings and could not be parsed as a file path or URL'
+            )
+
 
     return SPK.open(download_file(value, cache=True))
 
@@ -248,9 +250,10 @@ def _get_body_barycentric_posvel(body, time, ephemeris=None,
                     try:
                         body_index = PLAN94_BODY_NAME_TO_PLANET_INDEX[body]
                     except KeyError:
-                        raise KeyError("{}'s position and velocity cannot be "
-                                       "calculated with the '{}' ephemeris."
-                                       .format(body, ephemeris))
+                        raise KeyError(
+                            f"{body}'s position and velocity cannot be calculated with the '{ephemeris}' ephemeris."
+                        )
+
                     body_pv_helio = erfa.plan94(jd1, jd2, body_index)
                     body_pv_bary = erfa.pvppv(body_pv_helio, sun_pv_bary)
 
@@ -267,8 +270,10 @@ def _get_body_barycentric_posvel(body, time, ephemeris=None,
                 try:
                     kernel_spec = BODY_NAME_TO_KERNEL_SPEC[body.lower()]
                 except KeyError:
-                    raise KeyError("{}'s position cannot be calculated with "
-                                   "the {} ephemeris.".format(body, ephemeris))
+                    raise KeyError(
+                        f"{body}'s position cannot be calculated with the {ephemeris} ephemeris."
+                    )
+
             else:
                 # otherwise, assume the user knows what their doing and intentionally
                 # passed in a kernel chain

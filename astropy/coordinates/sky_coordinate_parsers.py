@@ -38,17 +38,20 @@ def _get_frame_class(frame):
     if isinstance(frame, str):
         frame_names = frame_transform_graph.get_names()
         if frame not in frame_names:
-            raise ValueError('Coordinate frame name "{}" is not a known '
-                             'coordinate frame ({})'
-                             .format(frame, sorted(frame_names)))
+            raise ValueError(
+                f'Coordinate frame name "{frame}" is not a known coordinate frame ({sorted(frame_names)})'
+            )
+
         frame_cls = frame_transform_graph.lookup_name(frame)
 
     elif inspect.isclass(frame) and issubclass(frame, BaseCoordinateFrame):
         frame_cls = frame
 
     else:
-        raise ValueError("Coordinate frame must be a frame name or frame "
-                         "class, not a '{}'".format(frame.__class__.__name__))
+        raise ValueError(
+            f"Coordinate frame must be a frame name or frame class, not a '{frame.__class__.__name__}'"
+        )
+
 
     return frame_cls
 
@@ -76,8 +79,6 @@ def _get_frame_without_data(args, kwargs):
     # We eventually (hopefully) fill and return these by extracting the frame
     # and frame attributes from the input:
     frame_cls = None
-    frame_cls_kwargs = {}
-
     # The first place to check: the frame could be specified explicitly
     frame = kwargs.pop('frame', None)
 
@@ -112,12 +113,10 @@ def _get_frame_without_data(args, kwargs):
                 # sure that no frame attributes were specified as kwargs - this
                 # would require a potential three-way merge:
                 if attr in kwargs:
-                    raise ValueError("Cannot specify frame attribute '{}' "
-                                     "directly as an argument to SkyCoord "
-                                     "because a frame instance was passed in. "
-                                     "Either pass a frame class, or modify the "
-                                     "frame attributes of the input frame "
-                                     "instance.".format(attr))
+                    raise ValueError(
+                        f"Cannot specify frame attribute '{attr}' directly as an argument to SkyCoord because a frame instance was passed in. Either pass a frame class, or modify the frame attributes of the input frame instance."
+                    )
+
                 elif not frame.is_frame_attr_default(attr):
                     kwargs[attr] = getattr(frame, attr)
 
@@ -161,14 +160,10 @@ def _get_frame_without_data(args, kwargs):
                 if (attr in kwargs and
                         not coord_frame_obj.is_frame_attr_default(attr) and
                         np.any(kwargs[attr] != getattr(coord_frame_obj, attr))):
-                    raise ValueError("Frame attribute '{}' has conflicting "
-                                     "values between the input coordinate data "
-                                     "and either keyword arguments or the "
-                                     "frame specification (frame=...): "
-                                     "{} =/= {}"
-                                     .format(attr,
-                                             getattr(coord_frame_obj, attr),
-                                             kwargs[attr]))
+                    raise ValueError(
+                        f"Frame attribute '{attr}' has conflicting values between the input coordinate data and either keyword arguments or the frame specification (frame=...): {getattr(coord_frame_obj, attr)} =/= {kwargs[attr]}"
+                    )
+
 
                 elif (attr not in kwargs and
                         not coord_frame_obj.is_frame_attr_default(attr)):
@@ -178,11 +173,10 @@ def _get_frame_without_data(args, kwargs):
             if frame_cls is None:
                 frame_cls = coord_frame_cls
             elif frame_cls is not coord_frame_cls:
-                raise ValueError("Cannot override frame='{}' of input "
-                                 "coordinate with new frame='{}'. Instead, "
-                                 "transform the coordinate."
-                                 .format(coord_frame_cls.__name__,
-                                         frame_cls.__name__))
+                raise ValueError(
+                    f"Cannot override frame='{coord_frame_cls.__name__}' of input coordinate with new frame='{frame_cls.__name__}'. Instead, transform the coordinate."
+                )
+
 
     if frame_cls is None:
         frame_cls = ICRS
@@ -192,9 +186,11 @@ def _get_frame_without_data(args, kwargs):
         # We should hopefully never get here...
         raise ValueError(f'Frame class has unexpected type: {frame_cls.__name__}')
 
-    for attr in frame_cls.frame_attributes:
-        if attr in kwargs:
-            frame_cls_kwargs[attr] = kwargs.pop(attr)
+    frame_cls_kwargs = {
+        attr: kwargs.pop(attr)
+        for attr in frame_cls.frame_attributes
+        if attr in kwargs
+    }
 
     if 'representation_type' in kwargs:
         frame_cls_kwargs['representation_type'] = _get_repr_cls(
@@ -217,16 +213,17 @@ def _parse_coordinate_data(frame, args, kwargs):
     are (1) extra SkyCoord attributes, and (2) the coordinate data, specified in
     any of the valid ways.
     """
-    valid_skycoord_kwargs = {}
     valid_components = {}
     info = None
 
     # Look through the remaining kwargs to see if any are valid attribute names
     # by asking the frame transform graph:
     attr_names = list(kwargs.keys())
-    for attr in attr_names:
-        if attr in frame_transform_graph.frame_attributes:
-            valid_skycoord_kwargs[attr] = kwargs.pop(attr)
+    valid_skycoord_kwargs = {
+        attr: kwargs.pop(attr)
+        for attr in attr_names
+        if attr in frame_transform_graph.frame_attributes
+    }
 
     # By this point in parsing the arguments, anything left in the args and
     # kwargs should be data. Either as individual components, or a list of
@@ -237,7 +234,7 @@ def _parse_coordinate_data(frame, args, kwargs):
 
     # Grab any frame-specific attr names like `ra` or `l` or `distance` from
     # kwargs and move them to valid_components.
-    valid_components.update(_get_representation_attrs(frame, units, kwargs))
+    valid_components |= _get_representation_attrs(frame, units, kwargs)
 
     # Error if anything is still left in kwargs
     if kwargs:
@@ -253,12 +250,8 @@ def _parse_coordinate_data(frame, args, kwargs):
             lat_name = frame_names[1]
 
             if f'pm_{lon_name}' in list(kwargs.keys()):
-                pm_message = ('\n\n By default, most frame classes expect '
-                              'the longitudinal proper motion to include '
-                              'the cos(latitude) term, named '
-                              '`pm_{}_cos{}`. Did you mean to pass in '
-                              'this component?'
-                              .format(lon_name, lat_name))
+                pm_message = f'\n\n By default, most frame classes expect the longitudinal proper motion to include the cos(latitude) term, named `pm_{lon_name}_cos{lat_name}`. Did you mean to pass in this component?'
+
 
         raise ValueError('Unrecognized keyword argument(s) {}{}'
                          .format(', '.join(f"'{key}'"
@@ -296,8 +289,10 @@ def _parse_coordinate_data(frame, args, kwargs):
                 _components[frame_attr_name] = attr_class(arg, unit=unit)
 
         else:
-            raise ValueError('Must supply no more than three positional arguments, got {}'
-                             .format(len(args)))
+            raise ValueError(
+                f'Must supply no more than three positional arguments, got {len(args)}'
+            )
+
 
         # The next two loops copy the component and skycoord attribute data into
         # their final, respective "valid_" dictionaries. For each, we check that
@@ -346,7 +341,7 @@ def _get_representation_component_units(args, kwargs):
 
         try:
             units = [(Unit(x) if x else None) for x in units]
-            units.extend(None for x in range(3 - len(units)))
+            units.extend(None for _ in range(3 - len(units)))
             if len(units) > 3:
                 raise ValueError()
         except Exception as err:
@@ -459,9 +454,6 @@ def _parse_coordinate_arg(coords, frame, units, init_kwargs):
         values = coords.transpose()  # Iterates over repr attrs
 
     elif isinstance(coords, (Sequence, np.ndarray)):
-        # Handles list-like input.
-
-        vals = []
         is_ra_dec_representation = ('ra' in frame.representation_component_names and
                                     'dec' in frame.representation_component_names)
         coord_types = (SkyCoord, BaseCoordinateFrame, BaseRepresentation)
@@ -474,8 +466,10 @@ def _parse_coordinate_arg(coords, frame, units, init_kwargs):
             # Check that all frames are equivalent
             for sc in scs[1:]:
                 if not sc.is_equivalent_frame(scs[0]):
-                    raise ValueError("List of inputs don't have equivalent "
-                                     "frames: {} != {}".format(sc, scs[0]))
+                    raise ValueError(
+                        f"List of inputs don't have equivalent frames: {sc} != {scs[0]}"
+                    )
+
 
             # Now use the first to determine if they are all UnitSpherical
             allunitsphrepr = isinstance(scs[0].data, UnitSphericalRepresentation)
@@ -505,6 +499,9 @@ def _parse_coordinate_arg(coords, frame, units, init_kwargs):
                     concat_vals._unit = data_val.unit
                 values.append(concat_vals)
         else:
+            # Handles list-like input.
+
+            vals = []
             # none of the elements are "frame-like"
             # turn into a list of lists like [[v1_0, v2_0, v3_0], ... [v1_N, v2_N, v3_N]]
             for coord in coords:
@@ -527,17 +524,18 @@ def _parse_coordinate_arg(coords, frame, units, init_kwargs):
                                  'does not have a length.') from err
 
             if len(n_coords) > 1:
-                raise ValueError('Input coordinate values must have '
-                                 'same number of elements, found {}'.format(n_coords))
+                raise ValueError(
+                    f'Input coordinate values must have same number of elements, found {n_coords}'
+                )
+
             n_coords = n_coords[0]
 
             # Must have no more coord inputs than representation attributes
             if n_coords > n_attr_names:
-                raise ValueError('Input coordinates have {} values but '
-                                 'representation {} only accepts {}'
-                                 .format(n_coords,
-                                         frame.representation_type.get_name(),
-                                         n_attr_names))
+                raise ValueError(
+                    f'Input coordinates have {n_coords} values but representation {frame.representation_type.get_name()} only accepts {n_attr_names}'
+                )
+
 
             # Now transpose vals to get [(v1_0 .. v1_N), (v2_0 .. v2_N), (v3_0 .. v3_N)]
             # (ok since we know it is exactly rectangular).  (Note: can't just use zip(*values)
@@ -559,8 +557,10 @@ def _parse_coordinate_arg(coords, frame, units, init_kwargs):
             components[frame_attr_name] = repr_attr_class(value, unit=unit,
                                                           copy=False)
     except Exception as err:
-        raise ValueError('Cannot parse first argument data "{}" for attribute '
-                         '{}'.format(value, frame_attr_name)) from err
+        raise ValueError(
+            f'Cannot parse first argument data "{value}" for attribute {frame_attr_name}'
+        ) from err
+
     return skycoord_kwargs, components
 
 
@@ -639,24 +639,37 @@ def _parse_ra_dec(coord_str):
         # This exception should never be raised from SkyCoord
         raise TypeError('coord_str must be a single str')
 
-    if len(coord1) == 6:
-        coord = (' '.join(coord1[:3]), ' '.join(coord1[3:]))
-    elif len(coord1) > 2:
+    if (
+        len(coord1) != 6
+        and len(coord1) <= 2
+        and len(coord1) == 1
+        and (match_j := J_PREFIXED_RA_DEC_RE.match(coord_str))
+    ):
+        coord = match_j.groups()
+        if len(coord[0].split('.')[0]) == 7:
+            coord = (
+                f'{coord[0][:3]} {coord[0][3:5]} {coord[0][5:]}',
+                f'{coord[1][:3]} {coord[1][3:5]} {coord[1][5:]}',
+            )
+
+        else:
+            coord = (
+                f'{coord[0][:2]} {coord[0][2:4]} {coord[0][4:]}',
+                f'{coord[1][:3]} {coord[1][3:5]} {coord[1][5:]}',
+            )
+
+    elif (
+        len(coord1) != 6
+        and len(coord1) <= 2
+        and len(coord1) == 1
+        and not (match_j := J_PREFIXED_RA_DEC_RE.match(coord_str))
+        or len(coord1) != 6
+        and len(coord1) > 2
+    ):
         coord = PLUS_MINUS_RE.split(coord_str)
         coord = (coord[0], ' '.join(coord[1:]))
-    elif len(coord1) == 1:
-        match_j = J_PREFIXED_RA_DEC_RE.match(coord_str)
-        if match_j:
-            coord = match_j.groups()
-            if len(coord[0].split('.')[0]) == 7:
-                coord = (f'{coord[0][0:3]} {coord[0][3:5]} {coord[0][5:]}',
-                         f'{coord[1][0:3]} {coord[1][3:5]} {coord[1][5:]}')
-            else:
-                coord = (f'{coord[0][0:2]} {coord[0][2:4]} {coord[0][4:]}',
-                         f'{coord[1][0:3]} {coord[1][3:5]} {coord[1][5:]}')
-        else:
-            coord = PLUS_MINUS_RE.split(coord_str)
-            coord = (coord[0], ' '.join(coord[1:]))
+    elif len(coord1) == 6:
+        coord = (' '.join(coord1[:3]), ' '.join(coord1[3:]))
     else:
         coord = coord1
 

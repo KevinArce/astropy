@@ -33,7 +33,10 @@ def __getattr__(name):
     if name not in available:
         raise AttributeError(f"module {__name__!r} has no attribute {name!r}.")
 
-    cosmo = Cosmology.read(str(_COSMOLOGY_DATA_DIR / name) + ".ecsv", format="ascii.ecsv")
+    cosmo = Cosmology.read(
+        f"{str(_COSMOLOGY_DATA_DIR / name)}.ecsv", format="ascii.ecsv"
+    )
+
     cosmo.__doc__ = (f"{name} instance of {cosmo.__class__.__qualname__} "
                      f"cosmology\n(from {cosmo.meta['reference']})")
 
@@ -82,11 +85,7 @@ class default_cosmology(ScienceState):
     @classmethod
     def get_cosmology_from_string(cls, arg):
         """Return a cosmology instance from a string."""
-        if arg == "no_default":
-            value = None
-        else:
-            value = cls._get_from_registry(arg)
-        return value
+        return None if arg == "no_default" else cls._get_from_registry(arg)
 
     @classmethod
     def validate(cls, value: Union[Cosmology, str, None]) -> Optional[Cosmology]:
@@ -112,10 +111,7 @@ class default_cosmology(ScienceState):
         # Parse to Cosmology. Error if cannot.
         if isinstance(value, str):
             # special-case one string
-            if value == "no_default":
-                value = None
-            else:
-                value = cls._get_from_registry(value)
+            value = None if value == "no_default" else cls._get_from_registry(value)
         elif not isinstance(value, Cosmology):
             raise TypeError("default_cosmology must be a string or Cosmology instance, "
                             f"not {value}.")

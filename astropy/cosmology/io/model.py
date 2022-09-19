@@ -53,18 +53,20 @@ class _CosmologyModel(FittableModel):
         """Cosmology method name as a private attribute. Set in subclasses."""
 
     @classproperty
-    def cosmology_class(cls):
+    def cosmology_class(self):
         """|Cosmology| class."""
-        return cls._cosmology_class
+        return self._cosmology_class
 
     @property
     def cosmology(self):
         """Return |Cosmology| using `~astropy.modeling.Parameter` values."""
-        cosmo = self._cosmology_class(
+        return self._cosmology_class(
             name=self.name,
-            **{k: (v.value if not (v := getattr(self, k)).unit else v.quantity)
-               for k in self.param_names})
-        return cosmo
+            **{
+                k: v.quantity if (v := getattr(self, k)).unit else v.value
+                for k in self.param_names
+            },
+        )
 
     @classproperty
     def method_name(self):
@@ -105,22 +107,18 @@ class _CosmologyModel(FittableModel):
         for k in self.param_names:
             if k not in ba.arguments:
                 v = getattr(self, k)
-                ba.arguments[k] = v.value if not v.unit else v.quantity
+                ba.arguments[k] = v.quantity if v.unit else v.value
 
             # unvectorize, since Cosmology is not vectorized
             # TODO! remove when vectorized
-            if np.shape(ba.arguments[k]):  # only in __call__
-                # m_nu is a special case  # TODO! fix by making it 'structured'
-                if k == "m_nu" and len(ba.arguments[k].shape) == 1:
-                    continue
+            if np.shape(ba.arguments[k]) and (
+                k != "m_nu" or len(ba.arguments[k].shape) != 1
+            ):
                 ba.arguments[k] = ba.arguments[k][0]
 
         # make instance of cosmology
         cosmo = self._cosmology_class(**ba.arguments)
-        # evaluate method
-        result = getattr(cosmo, self._method_name)(*args[:self.n_inputs])
-
-        return result
+        return getattr(cosmo, self._method_name)(*args[:self.n_inputs])
 
 
 ##############################################################################
@@ -201,11 +199,12 @@ def to_model(cosmology, *_, method):
     # introspect for number of positional inputs, ignoring "self"
     n_inputs = len([p for p in tuple(msig.parameters.values()) if (p.kind in (0, 1))])
 
-    attrs = {}  # class attributes
-    attrs["_cosmology_class"] = cosmo_cls
-    attrs["_method_name"] = method
-    attrs["n_inputs"] = n_inputs
-    attrs["n_outputs"] = 1
+    attrs = {
+        "_cosmology_class": cosmo_cls,
+        "_method_name": method,
+        "n_inputs": n_inputs,
+        "n_outputs": 1,
+    }
 
     params = {}  # Parameters (also class attributes)
     for n in cosmology.__parameters__:
@@ -225,17 +224,17 @@ def to_model(cosmology, *_, method):
                + "Model")
 
     # make Model class
-    CosmoModel = type(clsname, (_CosmologyModel, ), {**attrs, **params})
+    CosmoModel = type(clsname, (_CosmologyModel, ), attrs | params)
     # override __signature__ and format the doc.
     setattr(CosmoModel.evaluate, "__signature__", msig)
     CosmoModel.evaluate.__doc__ = CosmoModel.evaluate.__doc__.format(
         cosmo_cls=cosmo_cls.__qualname__, method=method)
 
     # instantiate class using default values
-    ps = {n: getattr(cosmology, n) for n in params.keys()}
-    model = CosmoModel(**ps, name=cosmology.name, meta=copy.deepcopy(cosmology.meta))
-
-    return model
+    ps = {n: getattr(cosmology, n) for n in params}
+    return CosmoModel(
+        **ps, name=cosmology.name, meta=copy.deepcopy(cosmology.meta)
+    )
 
 
 def model_identify(origin, format, *args, **kwargs):
@@ -245,11 +244,11 @@ def model_identify(origin, format, *args, **kwargs):
     -------
     bool
     """
-    itis = False
-    if origin == "read":
-        itis = isinstance(args[1], Model) and (format in (None, "astropy.model"))
-
-    return itis
+    return (
+        isinstance(args[1], Model) and (format in (None, "astropy.model"))
+        if origin == "read"
+        else False
+    )
 
 
 # ===================================================================

@@ -269,7 +269,7 @@ class FLRW(Cosmology):
     @property
     def is_flat(self):
         """Return bool; `True` if the cosmology is flat."""
-        return bool((self._Ok0 == 0.0) and (self.Otot0 == 1.0))
+        return self._Ok0 == 0.0 and self.Otot0 == 1.0
 
     @property
     def Otot0(self):
@@ -294,9 +294,7 @@ class FLRW(Cosmology):
     @property
     def has_massive_nu(self):
         """Does this cosmology have at least one massive neutrino species?"""
-        if self._Tnu0.value == 0:
-            return False
-        return self._massivenu
+        return False if self._Tnu0.value == 0 else self._massivenu
 
     @property
     def h(self):
@@ -716,8 +714,12 @@ class FLRW(Cosmology):
         It is not necessary to override this method, but if de_density_scale
         takes a particularly simple form, it may be advantageous to.
         """
-        Or = self._Ogamma0 + (self._Onu0 if not self._massivenu
-                              else self._Ogamma0 * self.nu_relative_density(z))
+        Or = self._Ogamma0 + (
+            self._Ogamma0 * self.nu_relative_density(z)
+            if self._massivenu
+            else self._Onu0
+        )
+
         zp1 = aszarr(z) + 1.0  # (converts z [unit] -> z [dimensionless])
 
         return np.sqrt(zp1 ** 2 * ((Or * zp1 + self._Om0) * zp1 + self._Ok0) +
@@ -738,8 +740,12 @@ class FLRW(Cosmology):
             Returns `float` if the input is scalar.
         """
         # Avoid the function overhead by repeating code
-        Or = self._Ogamma0 + (self._Onu0 if not self._massivenu
-                              else self._Ogamma0 * self.nu_relative_density(z))
+        Or = self._Ogamma0 + (
+            self._Ogamma0 * self.nu_relative_density(z)
+            if self._massivenu
+            else self._Onu0
+        )
+
         zp1 = aszarr(z) + 1.0  # (converts z [unit] -> z [dimensionless])
 
         return (zp1 ** 2 * ((Or * zp1 + self._Om0) * zp1 + self._Ok0) +
@@ -1446,7 +1452,7 @@ class FlatFLRWMixin(FlatCosmologyMixin):
         inst = self.__nonflatclass__(*ba.args, **ba.kwargs)
         # Because of machine precision, make sure parameters exactly match
         for n in inst.__all_parameters__ + ("Ok0", ):
-            setattr(inst, "_" + n, getattr(self, n))
+            setattr(inst, f"_{n}", getattr(self, n))
 
         return inst
 

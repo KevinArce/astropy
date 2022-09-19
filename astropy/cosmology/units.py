@@ -96,7 +96,7 @@ def redshift_distance(cosmology=None, kind="comoving", **atzkw):
     if kind not in allowed_kinds:
         raise ValueError(f"`kind` is not one of {allowed_kinds}")
 
-    method = getattr(cosmology, kind + "_distance")
+    method = getattr(cosmology, f"{kind}_distance")
 
     def z_to_distance(z):
         """Redshift to distance."""

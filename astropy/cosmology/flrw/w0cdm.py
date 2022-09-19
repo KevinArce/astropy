@@ -165,8 +165,12 @@ class wCDM(FLRW):
             Returns `float` if the input is scalar.
             Defined such that :math:`H(z) = H_0 E(z)`.
         """
-        Or = self._Ogamma0 + (self._Onu0 if not self._massivenu
-                              else self._Ogamma0 * self.nu_relative_density(z))
+        Or = self._Ogamma0 + (
+            self._Ogamma0 * self.nu_relative_density(z)
+            if self._massivenu
+            else self._Onu0
+        )
+
         zp1 = aszarr(z) + 1.0  # (converts z [unit] -> z [dimensionless])
 
         return sqrt(zp1 ** 2 * ((Or * zp1 + self._Om0) * zp1 + self._Ok0) +
@@ -187,8 +191,12 @@ class wCDM(FLRW):
             Returns `float` if the input is scalar.
             Defined such that :math:`H_z = H_0 / E`.
         """
-        Or = self._Ogamma0 + (self._Onu0 if not self._massivenu
-                              else self._Ogamma0 * self.nu_relative_density(z))
+        Or = self._Ogamma0 + (
+            self._Ogamma0 * self.nu_relative_density(z)
+            if self._massivenu
+            else self._Onu0
+        )
+
         zp1 = aszarr(z) + 1.0  # (converts z [unit] -> z [dimensionless])
 
         return (zp1 ** 2 * ((Or * zp1 + self._Om0) * zp1 + self._Ok0) +
@@ -299,8 +307,12 @@ class FlatwCDM(FlatFLRWMixin, wCDM):
             Returns `float` if the input is scalar.
             Defined such that :math:`H(z) = H_0 E(z)`.
         """
-        Or = self._Ogamma0 + (self._Onu0 if not self._massivenu
-                              else self._Ogamma0 * self.nu_relative_density(z))
+        Or = self._Ogamma0 + (
+            self._Ogamma0 * self.nu_relative_density(z)
+            if self._massivenu
+            else self._Onu0
+        )
+
         zp1 = aszarr(z) + 1.0  # (converts z [unit] -> z [dimensionless])
 
         return sqrt(zp1 ** 3 * (Or * zp1 + self._Om0) + self._Ode0 * zp1 ** (3.0 * (1 + self._w0)))
@@ -320,8 +332,12 @@ class FlatwCDM(FlatFLRWMixin, wCDM):
             Returns `float` if the input is scalar.
             Defined such that :math:`H(z) = H_0 E(z)`.
         """
-        Or = self._Ogamma0 + (self._Onu0 if not self._massivenu
-                              else self._Ogamma0 * self.nu_relative_density(z))
+        Or = self._Ogamma0 + (
+            self._Ogamma0 * self.nu_relative_density(z)
+            if self._massivenu
+            else self._Onu0
+        )
+
         zp1 = aszarr(z) + 1.0  # (converts z [unit] -> z [dimensionless])
 
         return (zp1 ** 3 * (Or * zp1 + self._Om0) +

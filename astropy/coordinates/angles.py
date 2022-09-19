@@ -337,7 +337,7 @@ class Angle(u.SpecificTypeQuantity):
             elif sep == 'fromunit':
                 values = self.to_value(unit)
                 unit_string = unit.to_string(format=format)
-                if format == 'latex' or format == 'latex_inline':
+                if format in ['latex', 'latex_inline']:
                     unit_string = unit_string[1:-1]
 
                 if precision is not None:
@@ -363,8 +363,8 @@ class Angle(u.SpecificTypeQuantity):
             if not np.isnan(val):
                 s = func(float(val))
                 if alwayssign and not s.startswith('-'):
-                    s = '+' + s
-                if format == 'latex' or format == 'latex_inline':
+                    s = f'+{s}'
+                if format in ['latex', 'latex_inline']:
                     s = f'${s}$'
                 return s
             s = f"{val}"
@@ -590,8 +590,9 @@ class Latitude(Angle):
             invalid_angles = (np.any(angles.value < lower) or
                               np.any(angles.value > upper))
         if invalid_angles:
-            raise ValueError('Latitude angle(s) must be within -90 deg <= angle <= 90 deg, '
-                             'got {}'.format(angles.to(u.degree)))
+            raise ValueError(
+                f'Latitude angle(s) must be within -90 deg <= angle <= 90 deg, got {angles.to(u.degree)}'
+            )
 
     def __setitem__(self, item, value):
         # Forbid assigning a Long to a Lat.

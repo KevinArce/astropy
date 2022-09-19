@@ -177,10 +177,7 @@ class Kernel:
         """
         Wrapper for multiplication with numpy arrays.
         """
-        if type(context[0]) == np.ufunc:
-            return NotImplemented
-        else:
-            return array
+        return NotImplemented if type(context[0]) == np.ufunc else array
 
 
 class Kernel1D(Kernel):

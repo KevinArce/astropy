@@ -153,7 +153,7 @@ class ToFromTableTestMixin(ToFromTestMixinBase):
         got2 = from_format(tbl, format="astropy.table", cosmology=cosmo_cls)
         got3 = from_format(tbl, format="astropy.table", cosmology=cosmo_cls.__qualname__)
 
-        assert (got == got2) and (got2 == got3)  # internal consistency
+        assert got == got2 == got3
 
         # not equal, because Tcmb0 is changed, which also changes m_nu
         assert got != cosmo
@@ -213,7 +213,7 @@ class ToFromTableTestMixin(ToFromTestMixinBase):
         assert not isinstance(obj, Cosmology)
 
         is_equiv = cosmo.is_equivalent(obj, format=format)
-        assert is_equiv is (True if format is not False else False)
+        assert is_equiv is (format is not False)
 
 
 class TestToFromTable(ToFromDirectTestBase, ToFromTableTestMixin):

@@ -49,7 +49,7 @@ def frame_attrs_from_set(frame_set):
     result = {}
 
     for frame_cls in frame_set:
-        result.update(frame_cls.frame_attributes)
+        result |= frame_cls.frame_attributes
 
     return result
 
@@ -185,8 +185,7 @@ class TransformGraph:
         attrs = set(frame_attrs_from_set(frame_set).keys())
         comps = frame_comps_from_set(frame_set)
 
-        invalid_attrs = attrs.intersection(comps)
-        if invalid_attrs:
+        if invalid_attrs := attrs.intersection(comps):
             invalid_frames = set()
             for attr in invalid_attrs:
                 if attr in fromsys.frame_attributes:
@@ -195,11 +194,10 @@ class TransformGraph:
                 if attr in tosys.frame_attributes:
                     invalid_frames.update([tosys])
 
-            raise ValueError("Frame(s) {} contain invalid attribute names: {}"
-                             "\nFrame attributes can not conflict with *any* of"
-                             " the frame data component names (see"
-                             " `frame_transform_graph.frame_component_names`)."
-                             .format(list(invalid_frames), invalid_attrs))
+            raise ValueError(
+                f"Frame(s) {list(invalid_frames)} contain invalid attribute names: {invalid_attrs}\nFrame attributes can not conflict with *any* of the frame data component names (see `frame_transform_graph.frame_component_names`)."
+            )
+
 
         self._graph[fromsys][tosys] = transform
         self.invalidate_cache()
@@ -223,8 +221,8 @@ class TransformGraph:
             and ``tosys`` and ``fromsys`` are supplied, there will be no
             check to ensure the correct object is removed.
         """
-        if fromsys is None or tosys is None:
-            if not (tosys is None and fromsys is None):
+        if fromsys is None:
+            if tosys is not None:
                 raise ValueError('fromsys and tosys must both be None if either are')
             if transform is None:
                 raise ValueError('cannot give all Nones to remove_transform')
@@ -244,6 +242,8 @@ class TransformGraph:
             else:
                 raise ValueError(f'Could not find transform {transform} in the graph')
 
+        elif tosys is None:
+            raise ValueError('fromsys and tosys must both be None if either are')
         else:
             if transform is None:
                 self._graph[fromsys].pop(tosys, None)
@@ -252,8 +252,10 @@ class TransformGraph:
                 if curr is transform:
                     self._graph[fromsys].pop(tosys)
                 else:
-                    raise ValueError('Current transform from {} to {} is not '
-                                     '{}'.format(fromsys, tosys, transform))
+                    raise ValueError(
+                        f'Current transform from {fromsys} to {tosys} is not {transform}'
+                    )
+
 
         # Remove the subgraph if it is now empty
         if self._graph[fromsys] == {}:
@@ -288,10 +290,9 @@ class TransformGraph:
         inf = float('inf')
 
         # special-case the 0 or 1-path
-        if tosys is fromsys:
-            if tosys not in self._graph[fromsys]:
-                # Means there's no transform necessary to go from it to itself.
-                return [tosys], 0
+        if tosys is fromsys and tosys not in self._graph[fromsys]:
+            # Means there's no transform necessary to go from it to itself.
+            return [tosys], 0
         if tosys in self._graph[fromsys]:
             # this will also catch the case where tosys is fromsys, but has
             # a defined transform.
@@ -303,11 +304,7 @@ class TransformGraph:
         if fromsys in self._shortestpaths:
             # already have a cached result
             fpaths = self._shortestpaths[fromsys]
-            if tosys in fpaths:
-                return fpaths[tosys]
-            else:
-                return None, inf
-
+            return fpaths[tosys] if tosys in fpaths else (None, inf)
         # use Dijkstra's algorithm to find shortest path in all other cases
 
         nodes = []
@@ -344,7 +341,7 @@ class TransformGraph:
 
         # definitely starts as a valid heap because of the insert line; from the
         # node to itself is always the shortest distance
-        while len(q) > 0:
+        while q:
             d, orderi, n, path = heapq.heappop(q)
 
             if d == inf:
@@ -518,7 +515,7 @@ class TransformGraph:
                 aliases = '`\\n`'.join(invclsaliases[n])
                 nodenames.append('{0} [shape=oval label="{0}\\n`{1}`"]'.format(n.__name__, aliases))
             else:
-                nodenames.append(n.__name__ + '[ shape=oval ]')
+                nodenames.append(f'{n.__name__}[ shape=oval ]')
 
         edgenames = []
         # Now the edges
@@ -531,25 +528,22 @@ class TransformGraph:
                 edgenames.append((a.__name__, b.__name__, pri, color))
 
         # generate simple dot format graph
-        lines = ['digraph AstropyCoordinateTransformGraph {']
-        lines.append('graph [rankdir=LR]')
-        lines.append('; '.join(nodenames) + ';')
+        lines = [
+            'digraph AstropyCoordinateTransformGraph {',
+            'graph [rankdir=LR]',
+            '; '.join(nodenames) + ';',
+        ]
+
+        labelstr_fmt = '[ {0} {1} ]'
+
         for enm1, enm2, weights, color in edgenames:
-            labelstr_fmt = '[ {0} {1} ]'
-
-            if priorities:
-                priority_part = f'label = "{weights}"'
-            else:
-                priority_part = ''
-
+            priority_part = f'label = "{weights}"' if priorities else ''
             color_part = f'color = "{color}"'
 
             labelstr = labelstr_fmt.format(priority_part, color_part)
             lines.append(f'{enm1} -> {enm2}{labelstr};')
 
-        lines.append('')
-        lines.append('overlap=false')
-        lines.append('}')
+        lines.extend(('', 'overlap=false', '}'))
         dotgraph = '\n'.join(lines)
 
         if savefn is not None:
@@ -559,7 +553,7 @@ class TransformGraph:
             else:
                 args = [savelayout]
                 if saveformat is not None:
-                    args.append('-T' + saveformat)
+                    args.append(f'-T{saveformat}')
                 proc = subprocess.Popen(args, stdin=subprocess.PIPE,
                                         stdout=subprocess.PIPE,
                                         stderr=subprocess.PIPE)
@@ -720,7 +714,7 @@ class TransformGraph:
         transforms = [self.get_transform(frame_a, frame_b)
                       for frame_a, frame_b in zip(frames[:-1], frames[1:])]
         if None in transforms:
-            raise ValueError(f"This transformation path is not possible")
+            raise ValueError("This transformation path is not possible")
         if len(full_path.transforms) == 1:
             raise ValueError(f"A direct transform for {fromsys.__name__}->{lastsys.__name__} already exists")
 
@@ -796,18 +790,19 @@ class CoordinateTransform(metaclass=ABCMeta):
         if register_graph:
             # this will do the type-checking when it adds to the graph
             self.register(register_graph)
-        else:
-            if not inspect.isclass(fromsys) or not inspect.isclass(tosys):
-                raise TypeError('fromsys and tosys must be classes')
+        elif not inspect.isclass(fromsys) or not inspect.isclass(tosys):
+            raise TypeError('fromsys and tosys must be classes')
 
         self.overlapping_frame_attr_names = overlap = []
         if (hasattr(fromsys, 'get_frame_attr_names') and
                 hasattr(tosys, 'get_frame_attr_names')):
             # the if statement is there so that non-frame things might be usable
             # if it makes sense
-            for from_nm in fromsys.frame_attributes.keys():
-                if from_nm in tosys.frame_attributes.keys():
-                    overlap.append(from_nm)
+            overlap.extend(
+                from_nm
+                for from_nm in fromsys.frame_attributes.keys()
+                if from_nm in tosys.frame_attributes.keys()
+            )
 
     def register(self, graph):
         """
@@ -988,10 +983,10 @@ class FunctionTransformWithFiniteDifference(FunctionTransform):
                 self._diff_attr_in_fromsys = diff_attr_in_fromsys
                 self._diff_attr_in_tosys = diff_attr_in_tosys
             else:
-                raise ValueError('Frame attribute name {} is not a frame '
-                                 'attribute of {} or {}'.format(value,
-                                                                self.fromsys,
-                                                                self.tosys))
+                raise ValueError(
+                    f'Frame attribute name {value} is not a frame attribute of {self.fromsys} or {self.tosys}'
+                )
+
         self._finite_difference_frameattr_name = value
 
     def __call__(self, fromcoord, toframe):
@@ -999,84 +994,85 @@ class FunctionTransformWithFiniteDifference(FunctionTransform):
                                      CartesianDifferential)
 
         supcall = self.func
-        if fromcoord.data.differentials:
+        if not fromcoord.data.differentials:
+            return supcall(fromcoord, toframe)
             # this is the finite difference case
 
-            if callable(self.finite_difference_dt):
-                dt = self.finite_difference_dt(fromcoord, toframe)
-            else:
-                dt = self.finite_difference_dt
-            halfdt = dt/2
+        dt = (
+            self.finite_difference_dt(fromcoord, toframe)
+            if callable(self.finite_difference_dt)
+            else self.finite_difference_dt
+        )
 
-            from_diffless = fromcoord.realize_frame(fromcoord.data.without_differentials())
-            reprwithoutdiff = supcall(from_diffless, toframe)
+        halfdt = dt/2
 
-            # first we use the existing differential to compute an offset due to
-            # the already-existing velocity, but in the new frame
-            fromcoord_cart = fromcoord.cartesian
-            if self.symmetric_finite_difference:
-                fwdxyz = (fromcoord_cart.xyz +
-                          fromcoord_cart.differentials['s'].d_xyz*halfdt)
-                fwd = supcall(fromcoord.realize_frame(CartesianRepresentation(fwdxyz)), toframe)
-                backxyz = (fromcoord_cart.xyz -
-                           fromcoord_cart.differentials['s'].d_xyz*halfdt)
-                back = supcall(fromcoord.realize_frame(CartesianRepresentation(backxyz)), toframe)
-            else:
-                fwdxyz = (fromcoord_cart.xyz +
-                          fromcoord_cart.differentials['s'].d_xyz*dt)
-                fwd = supcall(fromcoord.realize_frame(CartesianRepresentation(fwdxyz)), toframe)
-                back = reprwithoutdiff
-            diffxyz = (fwd.cartesian - back.cartesian).xyz / dt
+        from_diffless = fromcoord.realize_frame(fromcoord.data.without_differentials())
+        reprwithoutdiff = supcall(from_diffless, toframe)
 
-            # now we compute the "induced" velocities due to any movement in
-            # the frame itself over time
-            attrname = self.finite_difference_frameattr_name
-            if attrname is not None:
-                if self.symmetric_finite_difference:
-                    if self._diff_attr_in_fromsys:
-                        kws = {attrname: getattr(from_diffless, attrname) + halfdt}
-                        from_diffless_fwd = from_diffless.replicate(**kws)
-                    else:
-                        from_diffless_fwd = from_diffless
-                    if self._diff_attr_in_tosys:
-                        kws = {attrname: getattr(toframe, attrname) + halfdt}
-                        fwd_frame = toframe.replicate_without_data(**kws)
-                    else:
-                        fwd_frame = toframe
-                    fwd = supcall(from_diffless_fwd, fwd_frame)
-
-                    if self._diff_attr_in_fromsys:
-                        kws = {attrname: getattr(from_diffless, attrname) - halfdt}
-                        from_diffless_back = from_diffless.replicate(**kws)
-                    else:
-                        from_diffless_back = from_diffless
-                    if self._diff_attr_in_tosys:
-                        kws = {attrname: getattr(toframe, attrname) - halfdt}
-                        back_frame = toframe.replicate_without_data(**kws)
-                    else:
-                        back_frame = toframe
-                    back = supcall(from_diffless_back, back_frame)
-                else:
-                    if self._diff_attr_in_fromsys:
-                        kws = {attrname: getattr(from_diffless, attrname) + dt}
-                        from_diffless_fwd = from_diffless.replicate(**kws)
-                    else:
-                        from_diffless_fwd = from_diffless
-                    if self._diff_attr_in_tosys:
-                        kws = {attrname: getattr(toframe, attrname) + dt}
-                        fwd_frame = toframe.replicate_without_data(**kws)
-                    else:
-                        fwd_frame = toframe
-                    fwd = supcall(from_diffless_fwd, fwd_frame)
-                    back = reprwithoutdiff
-
-                diffxyz += (fwd.cartesian - back.cartesian).xyz / dt
-
-            newdiff = CartesianDifferential(diffxyz)
-            reprwithdiff = reprwithoutdiff.data.to_cartesian().with_differentials(newdiff)
-            return reprwithoutdiff.realize_frame(reprwithdiff)
+        # first we use the existing differential to compute an offset due to
+        # the already-existing velocity, but in the new frame
+        fromcoord_cart = fromcoord.cartesian
+        if self.symmetric_finite_difference:
+            fwdxyz = (fromcoord_cart.xyz +
+                      fromcoord_cart.differentials['s'].d_xyz*halfdt)
+            fwd = supcall(fromcoord.realize_frame(CartesianRepresentation(fwdxyz)), toframe)
+            backxyz = (fromcoord_cart.xyz -
+                       fromcoord_cart.differentials['s'].d_xyz*halfdt)
+            back = supcall(fromcoord.realize_frame(CartesianRepresentation(backxyz)), toframe)
         else:
-            return supcall(fromcoord, toframe)
+            fwdxyz = (fromcoord_cart.xyz +
+                      fromcoord_cart.differentials['s'].d_xyz*dt)
+            fwd = supcall(fromcoord.realize_frame(CartesianRepresentation(fwdxyz)), toframe)
+            back = reprwithoutdiff
+        diffxyz = (fwd.cartesian - back.cartesian).xyz / dt
+
+        # now we compute the "induced" velocities due to any movement in
+        # the frame itself over time
+        attrname = self.finite_difference_frameattr_name
+        if attrname is not None:
+            if self.symmetric_finite_difference:
+                if self._diff_attr_in_fromsys:
+                    kws = {attrname: getattr(from_diffless, attrname) + halfdt}
+                    from_diffless_fwd = from_diffless.replicate(**kws)
+                else:
+                    from_diffless_fwd = from_diffless
+                if self._diff_attr_in_tosys:
+                    kws = {attrname: getattr(toframe, attrname) + halfdt}
+                    fwd_frame = toframe.replicate_without_data(**kws)
+                else:
+                    fwd_frame = toframe
+                fwd = supcall(from_diffless_fwd, fwd_frame)
+
+                if self._diff_attr_in_fromsys:
+                    kws = {attrname: getattr(from_diffless, attrname) - halfdt}
+                    from_diffless_back = from_diffless.replicate(**kws)
+                else:
+                    from_diffless_back = from_diffless
+                if self._diff_attr_in_tosys:
+                    kws = {attrname: getattr(toframe, attrname) - halfdt}
+                    back_frame = toframe.replicate_without_data(**kws)
+                else:
+                    back_frame = toframe
+                back = supcall(from_diffless_back, back_frame)
+            else:
+                if self._diff_attr_in_fromsys:
+                    kws = {attrname: getattr(from_diffless, attrname) + dt}
+                    from_diffless_fwd = from_diffless.replicate(**kws)
+                else:
+                    from_diffless_fwd = from_diffless
+                if self._diff_attr_in_tosys:
+                    kws = {attrname: getattr(toframe, attrname) + dt}
+                    fwd_frame = toframe.replicate_without_data(**kws)
+                else:
+                    fwd_frame = toframe
+                fwd = supcall(from_diffless_fwd, fwd_frame)
+                back = reprwithoutdiff
+
+            diffxyz += (fwd.cartesian - back.cartesian).xyz / dt
+
+        newdiff = CartesianDifferential(diffxyz)
+        reprwithdiff = reprwithoutdiff.data.to_cartesian().with_differentials(newdiff)
+        return reprwithoutdiff.realize_frame(reprwithdiff)
 
 
 class BaseAffineTransform(CoordinateTransform):
@@ -1117,29 +1113,28 @@ class BaseAffineTransform(CoordinateTransform):
         # Some initial checking to short-circuit doing any re-representation if
         # we're going to fail anyways:
         if isinstance(data, UnitSphericalRepresentation) and offset is not None:
-            raise TypeError("Position information stored on coordinate frame "
-                            "is insufficient to do a full-space position "
-                            "transformation (representation class: {})"
-                            .format(data.__class__))
+            raise TypeError(
+                f"Position information stored on coordinate frame is insufficient to do a full-space position transformation (representation class: {data.__class__})"
+            )
+
 
         elif (has_velocity and (unit_vel_diff or rad_vel_diff) and
               offset is not None and 's' in offset.differentials):
             # Coordinate has a velocity, but it is not a full-space velocity
             # that we need to do a velocity offset
-            raise TypeError("Velocity information stored on coordinate frame "
-                            "is insufficient to do a full-space velocity "
-                            "transformation (differential class: {})"
-                            .format(data.differentials['s'].__class__))
+            raise TypeError(
+                f"Velocity information stored on coordinate frame is insufficient to do a full-space velocity transformation (differential class: {data.differentials['s'].__class__})"
+            )
+
 
         elif len(data.differentials) > 1:
             # We should never get here because the frame initializer shouldn't
             # allow more differentials, but this just adds protection for
             # subclasses that somehow skip the checks
-            raise ValueError("Representation passed to AffineTransform contains"
-                             " multiple associated differentials. Only a single"
-                             " differential with velocity units is presently"
-                             " supported (differentials: {})."
-                             .format(str(data.differentials)))
+            raise ValueError(
+                f"Representation passed to AffineTransform contains multiple associated differentials. Only a single differential with velocity units is presently supported (differentials: {str(data.differentials)})."
+            )
+
 
         # If the representation is a UnitSphericalRepresentation, and this is
         # just a MatrixTransform, we have to try to turn the differential into a
@@ -1445,7 +1440,7 @@ class CompositeTransform(CoordinateTransform):
         """
         newtrans = []
         for currtrans in transforms:
-            lasttrans = newtrans[-1] if len(newtrans) > 0 else None
+            lasttrans = newtrans[-1] if newtrans else None
 
             if (isinstance(lasttrans, StaticMatrixTransform) and
                     isinstance(currtrans, StaticMatrixTransform)):
@@ -1495,13 +1490,19 @@ class CompositeTransform(CoordinateTransform):
         `~astropy.coordinates.transformations.FunctionTransformWithFiniteDifference`.
         """
         # Create a list of the transforms including flattening any constituent CompositeTransform
-        transforms = [t if not isinstance(t, CompositeTransform) else t._as_single_transform()
-                      for t in self.transforms]
+        transforms = [
+            t._as_single_transform() if isinstance(t, CompositeTransform) else t
+            for t in self.transforms
+        ]
 
-        if all([isinstance(t, BaseAffineTransform) for t in transforms]):
+
+        if all(isinstance(t, BaseAffineTransform) for t in transforms):
             # Check if there may be an origin shift
-            fixed_origin = all([isinstance(t, (StaticMatrixTransform, DynamicMatrixTransform))
-                                for t in transforms])
+            fixed_origin = all(
+                isinstance(t, (StaticMatrixTransform, DynamicMatrixTransform))
+                for t in transforms
+            )
+
 
             # Dynamically define the transformation function
             def single_transform(from_coo, to_frame):
@@ -1583,17 +1584,16 @@ def _combine_affine_params(params, next_params):
             vec = vec.transform(next_M)
 
         # Calculate the new displacement vector
-        if next_vec is not None:
-            if 's' in vec.differentials and 's' in next_vec.differentials:
-                # Adding vectors with velocities takes more steps
-                # TODO: Add support in representation.py
-                new_vec_velocity = vec.differentials['s'] + next_vec.differentials['s']
-                new_vec = vec.without_differentials() + next_vec.without_differentials()
-                new_vec = new_vec.with_differentials({'s': new_vec_velocity})
-            else:
-                new_vec = vec + next_vec
-        else:
+        if next_vec is None:
             new_vec = vec
+        elif 's' in vec.differentials and 's' in next_vec.differentials:
+            # Adding vectors with velocities takes more steps
+            # TODO: Add support in representation.py
+            new_vec_velocity = vec.differentials['s'] + next_vec.differentials['s']
+            new_vec = vec.without_differentials() + next_vec.without_differentials()
+            new_vec = new_vec.with_differentials({'s': new_vec_velocity})
+        else:
+            new_vec = vec + next_vec
     else:
         new_vec = next_vec
 
@@ -1601,9 +1601,10 @@ def _combine_affine_params(params, next_params):
 
 
 # map class names to colorblind-safe colors
-trans_to_color = {}
-trans_to_color[AffineTransform] = '#555555'  # gray
-trans_to_color[FunctionTransform] = '#783001'  # dark red-ish/brown
-trans_to_color[FunctionTransformWithFiniteDifference] = '#d95f02'  # red-ish
-trans_to_color[StaticMatrixTransform] = '#7570b3'  # blue-ish
-trans_to_color[DynamicMatrixTransform] = '#1b9e77'  # green-ish
+trans_to_color = {
+    AffineTransform: '#555555',
+    FunctionTransform: '#783001',
+    FunctionTransformWithFiniteDifference: '#d95f02',
+    StaticMatrixTransform: '#7570b3',
+    DynamicMatrixTransform: '#1b9e77',
+}

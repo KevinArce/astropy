@@ -72,10 +72,12 @@ def cosmology_identify(origin, format, *args, **kwargs):
     -------
     bool
     """
-    itis = False
-    if origin == "read":
-        itis = isinstance(args[1], Cosmology) and (format in (None, "astropy.cosmology"))
-    return itis
+    return (
+        isinstance(args[1], Cosmology)
+        and (format in (None, "astropy.cosmology"))
+        if origin == "read"
+        else False
+    )
 
 
 # ===================================================================

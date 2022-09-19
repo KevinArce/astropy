@@ -335,17 +335,17 @@ def convolve(array, kernel, boundary='fill', fill_value=0.,
                                  "to zero. For a zero-sum kernel and "
                                  "data with NaNs, set nan_treatment='fill'.")
             else:
-                raise ValueError("The kernel can't be normalized, because "
-                                 "its sum is close to zero. The sum of the "
-                                 "given kernel is < {}"
-                                 .format(1. / MAX_NORMALIZATION))
+                raise ValueError(
+                    f"The kernel can't be normalized, because its sum is close to zero. The sum of the given kernel is < {1.0 / MAX_NORMALIZATION}"
+                )
+
 
     # Mark the NaN values so we can replace them later if interpolate_nan is
     # not set
     if preserve_nan or nan_treatment == 'fill':
         initially_nan = np.isnan(array_internal)
-        if nan_treatment == 'fill':
-            array_internal[initially_nan] = fill_value
+    if nan_treatment == 'fill':
+        array_internal[initially_nan] = fill_value
 
     # Avoid any memory allocation within the C code. Allocate output array
     # here and pass through instead.

@@ -109,10 +109,11 @@ def from_table(table, index=None, *, move_to_meta=False, cosmology=None):
     # Get row from table
     # string index uses the indexed column on the table to find the row index.
     if isinstance(index, str):
-        if not table.indices:  # no indexing column, find by string match
-            indices = np.where(table['name'] == index)[0]
-        else:  # has indexing column
-            indices = table.loc_indices[index]  # need to convert to row index (int)
+        indices = (
+            table.loc_indices[index]
+            if table.indices
+            else np.where(table['name'] == index)[0]
+        )
 
         if isinstance(indices, (int, np.integer)):  # loc_indices
             index = indices
@@ -240,10 +241,11 @@ def table_identify(origin, format, *args, **kwargs):
     -------
     bool
     """
-    itis = False
-    if origin == "read":
-        itis = isinstance(args[1], Table) and (format in (None, "astropy.table"))
-    return itis
+    return (
+        isinstance(args[1], Table) and (format in (None, "astropy.table"))
+        if origin == "read"
+        else False
+    )
 
 
 # ===================================================================
