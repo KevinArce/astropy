@@ -892,18 +892,22 @@ class TestGetLocationGCRS:
     # TETE and CIRS use get_location_gcrs to get obsgeoloc and obsgeovel
     # with knowledge of some of the matrices. Check that this is consistent
     # with a direct transformation.
-    def setup_class(cls):
-        cls.loc = loc = EarthLocation.from_geodetic(
-            np.linspace(0, 360, 6)*u.deg, np.linspace(-90, 90, 6)*u.deg, 100*u.m)
-        cls.obstime = obstime = Time(np.linspace(2000, 2010, 6), format='jyear')
+    def setup_class(self):
+        self.loc = loc = EarthLocation.from_geodetic(
+            np.linspace(0, 360, 6) * u.deg,
+            np.linspace(-90, 90, 6) * u.deg,
+            100 * u.m,
+        )
+
+        self.obstime = obstime = Time(np.linspace(2000, 2010, 6), format='jyear')
         # Get comparison via a full transformation.  We do not use any methods
         # of EarthLocation, since those depend on the fast transform.
         loc_itrs = ITRS(loc.x, loc.y, loc.z, obstime=obstime)
         zeros = np.broadcast_to(0. * (u.km / u.s), (3,) + loc_itrs.shape, subok=True)
         loc_itrs.data.differentials['s'] = CartesianDifferential(zeros)
         loc_gcrs_cart = loc_itrs.transform_to(GCRS(obstime=obstime)).cartesian
-        cls.obsgeoloc = loc_gcrs_cart.without_differentials()
-        cls.obsgeovel = loc_gcrs_cart.differentials['s'].to_cartesian()
+        self.obsgeoloc = loc_gcrs_cart.without_differentials()
+        self.obsgeovel = loc_gcrs_cart.differentials['s'].to_cartesian()
 
     def check_obsgeo(self, obsgeoloc, obsgeovel):
         assert_allclose(obsgeoloc.xyz, self.obsgeoloc.xyz, atol=.1*u.um, rtol=0.)

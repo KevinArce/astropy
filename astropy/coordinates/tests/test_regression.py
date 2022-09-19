@@ -162,12 +162,12 @@ def test_regression_4082():
     """
     from astropy.coordinates import search_around_sky, search_around_3d
     cat = SkyCoord([10.076, 10.00455], [18.54746, 18.54896], unit='deg')
-    search_around_sky(cat[0:1], cat, seplimit=u.arcsec * 60, storekdtree=False)
+    search_around_sky(cat[:1], cat, seplimit=u.arcsec * 60, storekdtree=False)
     # in the issue, this raises a TypeError
 
     # also check 3d for good measure, although it's not really affected by this bug directly
     cat3d = SkyCoord([10.076, 10.00455]*u.deg, [18.54746, 18.54896]*u.deg, distance=[0.1, 1.5]*u.kpc)
-    search_around_3d(cat3d[0:1], cat3d, 1*u.kpc, storekdtree=False)
+    search_around_3d(cat3d[:1], cat3d, 1*u.kpc, storekdtree=False)
 
 
 def test_regression_4210():
@@ -350,7 +350,7 @@ def test_itrs_vals_5133():
     aaf = AltAz(obstime=time, location=el)
     aacs = [coo.transform_to(aaf) for coo in coos]
 
-    assert all([coo.isscalar for coo in aacs])
+    assert all(coo.isscalar for coo in aacs)
 
     # the ~1 degree tolerance is b/c aberration makes it not exact
     assert_quantity_allclose(aacs[0].az, 180*u.deg, atol=1*u.deg)
@@ -417,17 +417,21 @@ def test_regression_5889_5890():
 def test_regression_6236():
     # sunpy changes its representation upon initialisation of a frame,
     # including via `realize_frame`. Ensure this works.
+
     class MyFrame(BaseCoordinateFrame):
         default_representation = CartesianRepresentation
         my_attr = QuantityAttribute(default=0, unit=u.m)
 
+
+
     class MySpecialFrame(MyFrame):
         def __init__(self, *args, **kwargs):
-            _rep_kwarg = kwargs.get('representation_type', None)
+            _rep_kwarg = kwargs.get('representation_type')
             super().__init__(*args, **kwargs)
             if not _rep_kwarg:
                 self.representation_type = self.default_representation
                 self._data = self.data.represent_as(self.representation_type)
+
 
     rep1 = UnitSphericalRepresentation([0., 1]*u.deg, [2., 3.]*u.deg)
     rep2 = SphericalRepresentation([10., 11]*u.deg, [12., 13.]*u.deg,

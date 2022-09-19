@@ -119,8 +119,8 @@ def horoscope(birthday, corrected=True, chinese=False):
         # TODO: Make this more accurate by using the actual date, not just year
         # Might need third-party tool like https://pypi.org/project/lunardate
         zodiac_sign = _get_zodiac(birthday.year)
-        url = ('https://www.horoscope.com/us/horoscopes/yearly/'
-               '{}-chinese-horoscope-{}.aspx'.format(today.year, zodiac_sign))
+        url = f'https://www.horoscope.com/us/horoscopes/yearly/{today.year}-chinese-horoscope-{zodiac_sign}.aspx'
+
         summ_title_sfx = f'in {today.year}'
 
         try:
@@ -145,10 +145,10 @@ def horoscope(birthday, corrected=True, chinese=False):
                 zodiac_sign = get_sun(birthday).get_constellation().lower()
             zodiac_sign = _CONST_TO_SIGNS.get(zodiac_sign, zodiac_sign)
             if zodiac_sign not in _VALID_SIGNS:
-                raise HumanError('On your birthday the sun was in {}, which is not '
-                                 'a sign of the zodiac.  You must not exist.  Or '
-                                 'maybe you can settle for '
-                                 'corrected=False.'.format(zodiac_sign.title()))
+                raise HumanError(
+                    f'On your birthday the sun was in {zodiac_sign.title()}, which is not a sign of the zodiac.  You must not exist.  Or maybe you can settle for corrected=False.'
+                )
+
         else:
             zodiac_sign = get_sign(birthday.to_datetime())
         url = f"http://www.astrology.com/us/horoscope/daily-overview.aspx?sign={zodiac_sign}"
@@ -170,7 +170,7 @@ def horoscope(birthday, corrected=True, chinese=False):
     for block in textwrap.wrap(desc, 79):
         split_block = block.split()
         for i, word in enumerate(split_block):
-            for re_word in special_words.keys():
+            for re_word in special_words:
                 match = re.search(re_word, word)
                 if match is None:
                     continue

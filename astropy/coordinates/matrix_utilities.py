@@ -63,11 +63,7 @@ def rotation_matrix(angle, axis='z', unit=None):
     if isinstance(angle, u.Quantity):
         angle = angle.to_value(u.radian)
     else:
-        if unit is None:
-            angle = np.deg2rad(angle)
-        else:
-            angle = u.Unit(unit).to(u.rad, angle)
-
+        angle = np.deg2rad(angle) if unit is None else u.Unit(unit).to(u.rad, angle)
     s = np.sin(angle)
     c = np.cos(angle)
 
@@ -80,7 +76,7 @@ def rotation_matrix(angle, axis='z', unit=None):
         R = (axis[..., np.newaxis] * axis[..., np.newaxis, :] *
              (1. - c)[..., np.newaxis, np.newaxis])
 
-        for i in range(0, 3):
+        for i in range(3):
             R[..., i, i] += c
             a1 = (i + 1) % 3
             a2 = (i + 2) % 3
@@ -153,10 +149,10 @@ def is_O3(matrix):
     """
     # matrix is in O(3) (rotations, proper and improper).
     I = np.identity(matrix.shape[-1])
-    is_o3 = np.all(np.isclose(matrix @ matrix.swapaxes(-2, -1), I, atol=1e-15),
-                   axis=(-2, -1))
-
-    return is_o3
+    return np.all(
+        np.isclose(matrix @ matrix.swapaxes(-2, -1), I, atol=1e-15),
+        axis=(-2, -1),
+    )
 
 
 def is_rotation(matrix, allow_improper=False):

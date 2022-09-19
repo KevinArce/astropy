@@ -141,7 +141,7 @@ class ReadWriteJSONTestMixin(ReadWriteTestMixinBase):
         got2 = read(tempfname, format="json", cosmology=cosmo_cls)
         got3 = read(tempfname, format="json", cosmology=cosmo_cls.__qualname__)
 
-        assert (got == got2) and (got2 == got3)  # internal consistency
+        assert got == got2 == got3
 
         # not equal, because Tcmb0 is changed, which also changes m_nu
         assert got != cosmo

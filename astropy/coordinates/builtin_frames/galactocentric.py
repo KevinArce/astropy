@@ -207,12 +207,12 @@ class galactocentric_frame_defaults(ScienceState):
     }
 
     @classproperty  # read-only
-    def parameters(cls):
-        return cls._value
+    def parameters(self):
+        return self._value
 
     @classproperty  # read-only
-    def references(cls):
-        return cls._references
+    def references(self):
+        return self._references
 
     @classmethod
     def get_from_registry(cls, name: str):
@@ -245,13 +245,7 @@ class galactocentric_frame_defaults(ScienceState):
         if name == 'latest':
             name = cls._latest_value
 
-        # Get the state from the registry.
-        # Copy to ensure registry is immutable to modifications of "_value".
-        # Raises KeyError if `name` is invalid string input to registry
-        # to retrieve solar parameters for Galactocentric frame.
-        state = copy.deepcopy(cls._registry[name])  # ensure mutable
-
-        return state
+        return copy.deepcopy(cls._registry[name])
 
     @deprecated("v4.2", alternative="`get_from_registry`")
     @classmethod
@@ -290,9 +284,7 @@ class galactocentric_frame_defaults(ScienceState):
 
         elif isinstance(value, Galactocentric):
             # turn the frame instance into a dict of frame attributes
-            parameters = dict()
-            for k in value.frame_attributes:
-                parameters[k] = getattr(value, k)
+            parameters = {k: getattr(value, k) for k in value.frame_attributes}
             cls._references = value.frame_attribute_references.copy()
             cls._state = dict(parameters=parameters,
                               references=cls._references)
@@ -325,15 +317,12 @@ class galactocentric_frame_defaults(ScienceState):
         # check on contents of `parameters`
         must_have = {"galcen_coord", "galcen_distance", "galcen_v_sun",
                      "z_sun", "roll"}
-        missing = must_have.difference(parameters)
-        if missing:
+        if missing := must_have.difference(parameters):
             raise ValueError(f"Missing parameters: {missing}")
 
         references = references or {}  # None -> {}
 
-        state = dict(parameters=parameters, references=references)
-        state.update(meta)  # meta never has keys "parameters" or "references"
-
+        state = dict(parameters=parameters, references=references) | meta
         cls._registry[name] = state
 
 

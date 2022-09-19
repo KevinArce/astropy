@@ -30,32 +30,42 @@ class ShapeSetup:
     Even more exhaustive tests are done in time.tests.test_methods
     """
 
-    def setup_class(cls):
+    def setup_class(self):
         # We set up some representations with, on purpose, copy=False,
         # so we can check that broadcasting is handled correctly.
         lon = Longitude(np.arange(0, 24, 4), u.hourangle)
         lat = Latitude(np.arange(-90, 91, 30), u.deg)
 
         # With same-sized arrays
-        cls.s0 = SphericalRepresentation(
+        self.s0 = SphericalRepresentation(
             lon[:, np.newaxis] * np.ones(lat.shape),
             lat * np.ones(lon.shape)[:, np.newaxis],
             np.ones(lon.shape + lat.shape) * u.kpc,
-            copy=False)
+            copy=False,
+        )
 
-        cls.diff = SphericalDifferential(
-            d_lon=np.ones(cls.s0.shape)*u.mas/u.yr,
-            d_lat=np.ones(cls.s0.shape)*u.mas/u.yr,
-            d_distance=np.ones(cls.s0.shape)*u.km/u.s,
-            copy=False)
-        cls.s0 = cls.s0.with_differentials(cls.diff)
+
+        self.diff = SphericalDifferential(
+            d_lon=np.ones(self.s0.shape) * u.mas / u.yr,
+            d_lat=np.ones(self.s0.shape) * u.mas / u.yr,
+            d_distance=np.ones(self.s0.shape) * u.km / u.s,
+            copy=False,
+        )
+
+        self.s0 = self.s0.with_differentials(self.diff)
 
         # With unequal arrays -> these will be broadcasted.
-        cls.s1 = SphericalRepresentation(lon[:, np.newaxis], lat, 1. * u.kpc,
-                                         differentials=cls.diff, copy=False)
+        self.s1 = SphericalRepresentation(
+            lon[:, np.newaxis],
+            lat,
+            1.0 * u.kpc,
+            differentials=self.diff,
+            copy=False,
+        )
+
 
         # For completeness on some tests, also a cartesian one
-        cls.c0 = cls.s0.to_cartesian()
+        self.c0 = self.s0.to_cartesian()
 
 
 class TestManipulation(ShapeSetup):
@@ -67,10 +77,7 @@ class TestManipulation(ShapeSetup):
     """
 
     def test_ravel(self, method):
-        if method:
-            s0_ravel = self.s0.ravel()
-        else:
-            s0_ravel = np.ravel(self.s0)
+        s0_ravel = self.s0.ravel() if method else np.ravel(self.s0)
         assert type(s0_ravel) is type(self.s0)
         assert s0_ravel.shape == (self.s0.size,)
         assert np.all(s0_ravel.lon == self.s0.lon.ravel())
@@ -80,10 +87,7 @@ class TestManipulation(ShapeSetup):
         assert s0_ravel.differentials['s'].shape == (self.s0.size,)
 
         # Since s1 was broadcast, ravel needs to make a copy.
-        if method:
-            s1_ravel = self.s1.ravel()
-        else:
-            s1_ravel = np.ravel(self.s1)
+        s1_ravel = self.s1.ravel() if method else np.ravel(self.s1)
         assert type(s1_ravel) is type(self.s1)
         assert s1_ravel.shape == (self.s1.size,)
         assert s1_ravel.differentials['s'].shape == (self.s1.size,)
@@ -91,10 +95,7 @@ class TestManipulation(ShapeSetup):
         assert not np.may_share_memory(s1_ravel.lat, self.s1.lat)
 
     def test_copy(self, method):
-        if method:
-            s0_copy = self.s0.copy()
-        else:
-            s0_copy = np.copy(self.s0)
+        s0_copy = self.s0.copy() if method else np.copy(self.s0)
         s0_copy_diff = s0_copy.differentials['s']
         assert s0_copy.shape == self.s0.shape
         assert np.all(s0_copy.lon == self.s0.lon)
@@ -158,10 +159,7 @@ class TestManipulation(ShapeSetup):
         assert np.may_share_memory(s0_diff.d_lon, self.diff.d_lon)
 
     def test_swapaxes(self, method):
-        if method:
-            s1_swapaxes = self.s1.swapaxes(0, 1)
-        else:
-            s1_swapaxes = np.swapaxes(self.s1, 0, 1)
+        s1_swapaxes = self.s1.swapaxes(0, 1) if method else np.swapaxes(self.s1, 0, 1)
         s1_diff = s1_swapaxes.differentials['s']
         assert s1_swapaxes.shape == (7, 6)
         assert s1_diff.shape == s1_swapaxes.shape
@@ -218,10 +216,7 @@ class TestManipulation(ShapeSetup):
         assert np.may_share_memory(s0_adddim.lat, self.s0.lat)
 
     def test_take(self, method):
-        if method:
-            s0_take = self.s0.take((5, 2))
-        else:
-            s0_take = np.take(self.s0, (5, 2))
+        s0_take = self.s0.take((5, 2)) if method else np.take(self.s0, (5, 2))
         s0_diff = s0_take.differentials['s']
         assert s0_take.shape == (2,)
         assert s0_diff.shape == s0_take.shape

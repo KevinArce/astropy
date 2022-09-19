@@ -107,19 +107,20 @@ class TestKernels:
         """
         if kernel_type == AiryDisk2DKernel and not HAS_SCIPY:
             pytest.skip("Omitting AiryDisk2DKernel, which requires SciPy")
-        if not kernel_type == Ring2DKernel:
-            kernel = kernel_type(width)
-        else:
-            kernel = kernel_type(width, width * 0.2)
+        kernel = (
+            kernel_type(width, width * 0.2)
+            if kernel_type == Ring2DKernel
+            else kernel_type(width)
+        )
 
         if kernel.dimension == 1:
             c1 = convolve_fft(delta_pulse_1D, kernel, boundary='fill', normalize_kernel=False)
             c2 = convolve(delta_pulse_1D, kernel, boundary='fill', normalize_kernel=False)
-            assert_almost_equal(c1, c2, decimal=12)
         else:
             c1 = convolve_fft(delta_pulse_2D, kernel, boundary='fill', normalize_kernel=False)
             c2 = convolve(delta_pulse_2D, kernel, boundary='fill', normalize_kernel=False)
-            assert_almost_equal(c1, c2, decimal=12)
+
+        assert_almost_equal(c1, c2, decimal=12)
 
     @pytest.mark.parametrize(('kernel_type', 'width'), list(itertools.product(KERNEL_TYPES, WIDTHS_ODD)))
     def test_random_data(self, kernel_type, width):
@@ -128,19 +129,20 @@ class TestKernels:
         """
         if kernel_type == AiryDisk2DKernel and not HAS_SCIPY:
             pytest.skip("Omitting AiryDisk2DKernel, which requires SciPy")
-        if not kernel_type == Ring2DKernel:
-            kernel = kernel_type(width)
-        else:
-            kernel = kernel_type(width, width * 0.2)
+        kernel = (
+            kernel_type(width, width * 0.2)
+            if kernel_type == Ring2DKernel
+            else kernel_type(width)
+        )
 
         if kernel.dimension == 1:
             c1 = convolve_fft(random_data_1D, kernel, boundary='fill', normalize_kernel=False)
             c2 = convolve(random_data_1D, kernel, boundary='fill', normalize_kernel=False)
-            assert_almost_equal(c1, c2, decimal=12)
         else:
             c1 = convolve_fft(random_data_2D, kernel, boundary='fill', normalize_kernel=False)
             c2 = convolve(random_data_2D, kernel, boundary='fill', normalize_kernel=False)
-            assert_almost_equal(c1, c2, decimal=12)
+
+        assert_almost_equal(c1, c2, decimal=12)
 
     @pytest.mark.parametrize(('width'), WIDTHS_ODD)
     def test_uniform_smallkernel(self, width):
@@ -458,19 +460,20 @@ class TestKernels:
         """
         if kernel_type == AiryDisk2DKernel and not HAS_SCIPY:
             pytest.skip("Omitting AiryDisk2DKernel, which requires SciPy")
-        if not kernel_type == Ring2DKernel:
-            kernel = kernel_type(3)
-        else:
-            kernel = kernel_type(3, 3 * 0.2)
+        kernel = (
+            kernel_type(3, 3 * 0.2)
+            if kernel_type == Ring2DKernel
+            else kernel_type(3)
+        )
 
         if kernel.dimension == 1:
             c1 = convolve_fft(delta_pulse_1D, kernel, boundary='fill', normalize_kernel=False)
             c2 = convolve(delta_pulse_1D, kernel, boundary='fill', normalize_kernel=False)
-            assert_almost_equal(c1, c2, decimal=12)
         else:
             c1 = convolve_fft(delta_pulse_2D, kernel, boundary='fill', normalize_kernel=False)
             c2 = convolve(delta_pulse_2D, kernel, boundary='fill', normalize_kernel=False)
-            assert_almost_equal(c1, c2, decimal=12)
+
+        assert_almost_equal(c1, c2, decimal=12)
 
     @pytest.mark.parametrize(('width'), WIDTHS_EVEN)
     def test_box_kernels_even_size(self, width):

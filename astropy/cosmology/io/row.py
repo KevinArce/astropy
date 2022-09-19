@@ -134,10 +134,11 @@ def row_identify(origin, format, *args, **kwargs):
     -------
     bool
     """
-    itis = False
-    if origin == "read":
-        itis = isinstance(args[1], Row) and (format in (None, "astropy.row"))
-    return itis
+    return (
+        isinstance(args[1], Row) and (format in (None, "astropy.row"))
+        if origin == "read"
+        else False
+    )
 
 
 # ===================================================================

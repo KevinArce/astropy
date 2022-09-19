@@ -161,11 +161,7 @@ def test_concatenate_representations():
 
     # Test that combining all of the above with itself succeeds
     for rep in reps:
-        if not rep.shape:
-            expected_shape = (2, )
-        else:
-            expected_shape = (2 * rep.shape[0], ) + rep.shape[1:]
-
+        expected_shape = (2 * rep.shape[0], ) + rep.shape[1:] if rep.shape else (2, )
         tmp = concatenate_representations((rep, rep))
         assert tmp.shape == expected_shape
 
@@ -174,11 +170,7 @@ def test_concatenate_representations():
 
     # Try combining 4, just for something different
     for rep in reps:
-        if not rep.shape:
-            expected_shape = (4, )
-        else:
-            expected_shape = (4 * rep.shape[0], ) + rep.shape[1:]
-
+        expected_shape = (4 * rep.shape[0], ) + rep.shape[1:] if rep.shape else (4, )
         tmp = concatenate_representations((rep, rep, rep, rep))
         assert tmp.shape == expected_shape
 

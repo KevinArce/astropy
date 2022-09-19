@@ -113,7 +113,7 @@ def register_cosmology_yaml(cosmo_cls):
     cosmo_cls : `~astropy.cosmology.Cosmology` class
     """
     fqn = f"{cosmo_cls.__module__}.{cosmo_cls.__qualname__}"
-    tag = "!" + QNS.get(fqn, fqn)  # Possibly sub fully qualified name for a preferred path
+    tag = f"!{QNS.get(fqn, fqn)}"
 
     AstropyDumper.add_representer(cosmo_cls, yaml_representer(tag))
     AstropyLoader.add_constructor(tag, yaml_constructor(cosmo_cls))

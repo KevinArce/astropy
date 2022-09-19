@@ -32,45 +32,68 @@ class TestManipulation():
     Even more exhaustive tests are done in time.tests.test_methods
     """
 
-    def setup_class(cls):
+    def setup_class(self):
         # For these tests, we set up frames and coordinates using copy=False,
         # so we can check that broadcasting is handled correctly.
         lon = Longitude(np.arange(0, 24, 4), u.hourangle)
         lat = Latitude(np.arange(-90, 91, 30), u.deg)
         # With same-sized arrays, no attributes.
-        cls.s0 = ICRS(lon[:, np.newaxis] * np.ones(lat.shape),
-                      lat * np.ones(lon.shape)[:, np.newaxis], copy=False)
+        self.s0 = ICRS(
+            lon[:, np.newaxis] * np.ones(lat.shape),
+            lat * np.ones(lon.shape)[:, np.newaxis],
+            copy=False,
+        )
+
         # Make an AltAz frame since that has many types of attributes.
         # Match one axis with times.
-        cls.obstime = (Time('2012-01-01') +
-                       np.arange(len(lon))[:, np.newaxis] * u.s)
+        self.obstime = (
+            Time('2012-01-01') + np.arange(len(lon))[:, np.newaxis] * u.s
+        )
+
         # And another with location.
-        cls.location = EarthLocation(20.*u.deg, lat, 100*u.m)
+        self.location = EarthLocation(20.*u.deg, lat, 100*u.m)
         # Ensure we have a quantity scalar.
-        cls.pressure = 1000 * u.hPa
+        self.pressure = 1000 * u.hPa
         # As well as an array.
-        cls.temperature = np.random.uniform(
-            0., 20., size=(lon.size, lat.size)) * u.deg_C
-        cls.s1 = AltAz(az=lon[:, np.newaxis], alt=lat,
-                       obstime=cls.obstime,
-                       location=cls.location,
-                       pressure=cls.pressure,
-                       temperature=cls.temperature, copy=False)
+        self.temperature = (
+            np.random.uniform(0.0, 20.0, size=(lon.size, lat.size)) * u.deg_C
+        )
+
+        self.s1 = AltAz(
+            az=lon[:, np.newaxis],
+            alt=lat,
+            obstime=self.obstime,
+            location=self.location,
+            pressure=self.pressure,
+            temperature=self.temperature,
+            copy=False,
+        )
+
         # For some tests, also try a GCRS, since that has representation
         # attributes.  We match the second dimension (via the location)
-        cls.obsgeoloc, cls.obsgeovel = cls.location.get_gcrs_posvel(
-            cls.obstime[0, 0])
-        cls.s2 = GCRS(ra=lon[:, np.newaxis], dec=lat,
-                      obstime=cls.obstime,
-                      obsgeoloc=cls.obsgeoloc,
-                      obsgeovel=cls.obsgeovel, copy=False)
+        self.obsgeoloc, self.obsgeovel = self.location.get_gcrs_posvel(
+            self.obstime[0, 0]
+        )
+
+        self.s2 = GCRS(
+            ra=lon[:, np.newaxis],
+            dec=lat,
+            obstime=self.obstime,
+            obsgeoloc=self.obsgeoloc,
+            obsgeovel=self.obsgeovel,
+            copy=False,
+        )
+
         # For completeness, also some tests on an empty frame.
-        cls.s3 = GCRS(obstime=cls.obstime,
-                      obsgeoloc=cls.obsgeoloc,
-                      obsgeovel=cls.obsgeovel, copy=False)
+        self.s3 = GCRS(
+            obstime=self.obstime,
+            obsgeoloc=self.obsgeoloc,
+            obsgeovel=self.obsgeovel,
+            copy=False,
+        )
+
         # And make a SkyCoord
-        cls.sc = SkyCoord(ra=lon[:, np.newaxis], dec=lat, frame=cls.s3,
-                          copy=False)
+        self.sc = SkyCoord(ra=lon[:, np.newaxis], dec=lat, frame=self.s3, copy=False)
 
     def test_getitem0101(self):
         # We on purpose take a slice with only one element, as for the
@@ -325,10 +348,7 @@ class TestManipulation():
         assert np.may_share_memory(s0_squeeze.data.lat, self.s0.data.lat)
 
     def test_add_dimension(self, method):
-        if method:
-            s0_adddim = self.s0[:, np.newaxis, :]
-        else:
-            s0_adddim = np.expand_dims(self.s0, 1)
+        s0_adddim = self.s0[:, np.newaxis, :] if method else np.expand_dims(self.s0, 1)
         assert s0_adddim.shape == (6, 1, 7)
         assert np.all(s0_adddim.data.lon == self.s0.data.lon[:, np.newaxis, :])
         assert np.may_share_memory(s0_adddim.data.lat, self.s0.data.lat)

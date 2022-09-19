@@ -4,6 +4,7 @@
 This module contains tests for the name resolve convenience module.
 """
 
+
 import time
 import urllib.request
 
@@ -20,8 +21,8 @@ from astropy import units as u
 
 from pytest_remotedata.disable_internet import no_internet
 
-_cached_ngc3642 = dict()
-_cached_ngc3642["simbad"] = """# NGC 3642    #Q22523669
+_cached_ngc3642 = {
+    "simbad": """# NGC 3642    #Q22523669
 #=S=Simbad (via url):    1
 %@ 503952
 %I.0 NGC 3642
@@ -34,18 +35,16 @@ _cached_ngc3642["simbad"] = """# NGC 3642    #Q22523669
 %#B 140
 
 
-#====Done (2013-Feb-12,16:37:11z)===="""
-
-_cached_ngc3642["vizier"] = """# NGC 3642    #Q22523677
+#====Done (2013-Feb-12,16:37:11z)====""",
+    "vizier": """# NGC 3642    #Q22523677
 #=V=VizieR (local):    1
 %J 170.56 +59.08 = 11:22.2     +59:05
 %I.0 {NGC} 3642
 
 
 
-#====Done (2013-Feb-12,16:37:42z)===="""
-
-_cached_ngc3642["all"] = """# ngc3642    #Q22523722
+#====Done (2013-Feb-12,16:37:42z)====""",
+    "all": """# ngc3642    #Q22523722
 #=S=Simbad (via url):    1
 %@ 503952
 %I.0 NGC 3642
@@ -65,10 +64,11 @@ _cached_ngc3642["all"] = """# ngc3642    #Q22523722
 
 #!N=NED : *** Could not access the server ***
 
-#====Done (2013-Feb-12,16:39:48z)===="""
+#====Done (2013-Feb-12,16:39:48z)====""",
+}
 
-_cached_castor = dict()
-_cached_castor["all"] = """# castor    #Q22524249
+_cached_castor = {
+    "all": """# castor    #Q22524249
 #=S=Simbad (via url):    1
 %@ 983633
 %I.0 NAME CASTOR
@@ -88,9 +88,8 @@ _cached_castor["all"] = """# castor    #Q22524249
 
 
 
-#====Done (2013-Feb-12,16:52:02z)===="""
-
-_cached_castor["simbad"] = """# castor    #Q22524495
+#====Done (2013-Feb-12,16:52:02z)====""",
+    "simbad": """# castor    #Q22524495
 #=S=Simbad (via url):    1
 %@ 983633
 %I.0 NAME CASTOR
@@ -104,7 +103,8 @@ _cached_castor["simbad"] = """# castor    #Q22524495
 %#B 179
 
 
-#====Done (2013-Feb-12,17:00:39z)===="""
+#====Done (2013-Feb-12,17:00:39z)====""",
+}
 
 
 @pytest.mark.remote_data
@@ -156,7 +156,10 @@ def test_name_resolve_cache(tmpdir):
         urls = get_cached_urls()
         assert len(urls) == 1
         expected_urls = sesame_url.get()
-        assert any([urls[0].startswith(x) for x in expected_urls]), f'{urls[0]} not in {expected_urls}'
+        assert any(
+            urls[0].startswith(x) for x in expected_urls
+        ), f'{urls[0]} not in {expected_urls}'
+
 
         # Try reloading coordinates, now should just reload cached data:
         with no_internet():

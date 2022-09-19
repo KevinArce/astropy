@@ -336,11 +336,11 @@ def z_at_value(func, fval, zmin=1e-8, zmax=1000, ztol=1e-8, maxfun=500,
     # bracket must be an object array (assumed to be correct) or a 'scalar'
     # bracket: 2 or 3 elt sequence
     if not isinstance(bracket, np.ndarray):  # 'scalar' bracket
-        if bracket is not None and len(bracket) not in (2, 3):
+        if bracket is None or len(bracket) in {2, 3}:  # munge bracket into a 1-elt object array
+            bracket = np.array([bracket, ()], dtype=object)[:1].squeeze()
+        else:
             raise ValueError("`bracket` is not an array "
                              "nor a 2 (or 3) element sequence.")
-        else:  # munge bracket into a 1-elt object array
-            bracket = np.array([bracket, ()], dtype=object)[:1].squeeze()
     if bracket.dtype != np.object_:
         raise TypeError(f"`bracket` has dtype {bracket.dtype}, not 'O'")
 

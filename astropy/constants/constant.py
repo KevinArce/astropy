@@ -109,8 +109,8 @@ class Constant(Quantity, metaclass=ConstantMeta):
                 reference=None, system=None):
         if reference is None:
             reference = getattr(cls, 'default_reference', None)
-            if reference is None:
-                raise TypeError(f"{cls} requires a reference.")
+        if reference is None:
+            raise TypeError(f"{cls} requires a reference.")
         name_lower = name.lower()
         instances = cls._registry.setdefault(name_lower, {})
         # By-pass Quantity initialization, since units may not yet be
@@ -147,13 +147,7 @@ class Constant(Quantity, metaclass=ConstantMeta):
                                           self.reference))
 
     def __str__(self):
-        return ('  Name   = {}\n'
-                '  Value  = {}\n'
-                '  Uncertainty  = {}\n'
-                '  Unit  = {}\n'
-                '  Reference = {}'.format(self.name, self.value,
-                                           self.uncertainty, self.unit,
-                                           self.reference))
+        return f'  Name   = {self.name}\n  Value  = {self.value}\n  Uncertainty  = {self.uncertainty}\n  Unit  = {self.unit}\n  Reference = {self.reference}'
 
     def __quantity_subclass__(self, unit):
         return super().__quantity_subclass__(unit)[0], False
@@ -211,10 +205,7 @@ class Constant(Quantity, metaclass=ConstantMeta):
     def _instance_or_super(self, key):
         instances = self._registry[self.name.lower()]
         inst = instances.get(key)
-        if inst is not None:
-            return inst
-        else:
-            return getattr(super(), key)
+        return inst if inst is not None else getattr(super(), key)
 
     @property
     def si(self):

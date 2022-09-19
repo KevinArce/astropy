@@ -544,7 +544,7 @@ class TestFLRW(CosmologyTest,
 
         # on the instance
         assert isinstance(cosmo.is_flat, bool)
-        assert cosmo.is_flat is bool((cosmo.Ok0 == 0.0) and (cosmo.Otot0 == 1.0))
+        assert cosmo.is_flat is (cosmo.Ok0 == 0.0 and cosmo.Otot0 == 1.0)
 
     def test_Tnu0(self, cosmo_cls, cosmo):
         """Test property ``Tnu0``."""
@@ -701,7 +701,7 @@ class TestFLRW(CosmologyTest,
         # Note that H0 affects Ode0 because it changes Ogamma0
         c = cosmo.clone(H0=100)
         assert c.__class__ == cosmo.__class__
-        assert c.name == cosmo.name + " (modified)"
+        assert c.name == f"{cosmo.name} (modified)"
         assert c.H0.value == 100
         for n in (set(cosmo.__parameters__) - {"H0"}):
             v = getattr(c, n)
@@ -933,7 +933,7 @@ class FlatFLRWMixinTest(FlatCosmologyMixinTest, ParameterFlatOde0TestMixin):
 
         nc = cosmo.clone(to_nonflat=True, Ode0=1)
         assert nc.Ode0 == 1.0
-        assert nc.name == cosmo.name + " (modified)"
+        assert nc.name == f"{cosmo.name} (modified)"
 
     # ---------------------------------------------------------------
 

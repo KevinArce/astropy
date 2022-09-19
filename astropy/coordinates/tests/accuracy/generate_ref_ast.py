@@ -63,8 +63,10 @@ def ref_fk4_no_e_fk4(fnout='fk4_no_e_fk4.csv'):
     t.add_column(Column(name='ra_fk4', data=ra_fk4))
     t.add_column(Column(name='dec_fk4', data=dec_fk4))
     f = open(os.path.join('data', fnout), 'wb')
-    f.write("# This file was generated with the {} script, and the reference "
-            "values were computed using AST\n".format(os.path.basename(__file__)))
+    f.write(
+        f"# This file was generated with the {os.path.basename(__file__)} script, and the reference values were computed using AST\n"
+    )
+
     t.write(f, format='ascii', delimiter=',')
 
 
@@ -124,8 +126,10 @@ def ref_fk4_no_e_fk5(fnout='fk4_no_e_fk5.csv'):
     t.add_column(Column(name='ra_fk4', data=ra_fk4))
     t.add_column(Column(name='dec_fk4', data=dec_fk4))
     f = open(os.path.join('data', fnout), 'wb')
-    f.write("# This file was generated with the {} script, and the reference "
-            "values were computed using AST\n".format(os.path.basename(__file__)))
+    f.write(
+        f"# This file was generated with the {os.path.basename(__file__)} script, and the reference values were computed using AST\n"
+    )
+
     t.write(f, format='ascii', delimiter=',')
 
 
@@ -183,8 +187,10 @@ def ref_galactic_fk4(fnout='galactic_fk4.csv'):
     t.add_column(Column(name='lon_gal', data=lon_gal))
     t.add_column(Column(name='lat_gal', data=lat_gal))
     f = open(os.path.join('data', fnout), 'wb')
-    f.write("# This file was generated with the {} script, and the reference "
-            "values were computed using AST\n".format(os.path.basename(__file__)))
+    f.write(
+        f"# This file was generated with the {os.path.basename(__file__)} script, and the reference values were computed using AST\n"
+    )
+
     t.write(f, format='ascii', delimiter=',')
 
 
@@ -242,8 +248,10 @@ def ref_icrs_fk5(fnout='icrs_fk5.csv'):
     t.add_column(Column(name='ra_icrs', data=ra_icrs))
     t.add_column(Column(name='dec_icrs', data=dec_icrs))
     f = open(os.path.join('data', fnout), 'wb')
-    f.write("# This file was generated with the {} script, and the reference "
-            "values were computed using AST\n".format(os.path.basename(__file__)))
+    f.write(
+        f"# This file was generated with the {os.path.basename(__file__)} script, and the reference values were computed using AST\n"
+    )
+
     t.write(f, format='ascii', delimiter=',')
 
 

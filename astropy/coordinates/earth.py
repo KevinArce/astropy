@@ -195,8 +195,7 @@ class EarthLocation(u.Quantity):
 
     def __new__(cls, *args, **kwargs):
         # TODO: needs copy argument and better dealing with inputs.
-        if (len(args) == 1 and len(kwargs) == 0 and
-                isinstance(args[0], EarthLocation)):
+        if len(args) == 1 and not kwargs and isinstance(args[0], EarthLocation):
             return args[0].copy()
         try:
             self = cls.from_geocentric(*args, **kwargs)
@@ -204,10 +203,10 @@ class EarthLocation(u.Quantity):
             try:
                 self = cls.from_geodetic(*args, **kwargs)
             except Exception as exc_geodetic:
-                raise TypeError('Coordinates could not be parsed as either '
-                                'geocentric or geodetic, with respective '
-                                'exceptions "{}" and "{}"'
-                                .format(exc_geocentric, exc_geodetic))
+                raise TypeError(
+                    f'Coordinates could not be parsed as either geocentric or geodetic, with respective exceptions "{exc_geocentric}" and "{exc_geodetic}"'
+                )
+
         return self
 
     @classmethod
@@ -369,10 +368,9 @@ class EarthLocation(u.Quantity):
 
         if cls is el.__class__:
             return el
-        else:
-            newel = cls.from_geodetic(*el.to_geodetic())
-            newel.info.name = el.info.name
-            return newel
+        newel = cls.from_geodetic(*el.to_geodetic())
+        newel.info.name = el.info.name
+        return newel
 
     @classmethod
     def of_address(cls, address, get_height=False, google_api_key=None):
@@ -537,10 +535,12 @@ class EarthLocation(u.Quantity):
             reg = getattr(cls, '_site_registry', None)
             if force_download or not reg:
                 try:
-                    if isinstance(force_download, str):
-                        reg = get_downloaded_sites(force_download)
-                    else:
-                        reg = get_downloaded_sites()
+                    reg = (
+                        get_downloaded_sites(force_download)
+                        if isinstance(force_download, str)
+                        else get_downloaded_sites()
+                    )
+
                 except OSError:
                     if force_download:
                         raise
@@ -778,7 +778,7 @@ class EarthLocation(u.Quantity):
                    'jupiter': consts.GM_jup,
                    'moon': consts.G * 7.34767309e22*u.kg,
                    'earth': consts.GM_earth}
-        _masses.update(masses)
+        _masses |= masses
         GMs = []
         M_GM_equivalency = (u.kg, u.Unit(consts.G * u.kg))
         for body in bodies:

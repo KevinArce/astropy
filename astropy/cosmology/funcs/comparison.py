@@ -152,7 +152,10 @@ def _parse_formats(*cosmos: object, format: _FormatsT) -> ndarray:
     # astropy.row cannot be used in an array, even if dtype=object
     # and will raise a segfault when used in a ufunc.
     towrap = (isinstance(cosmo, _CosmologyWrapper._cantbroadcast) for cosmo in cosmos)
-    wcosmos = [c if not wrap else _CosmologyWrapper(c) for c, wrap in zip(cosmos, towrap)]
+    wcosmos = [
+        _CosmologyWrapper(c) if wrap else c for c, wrap in zip(cosmos, towrap)
+    ]
+
 
     return _parse_format(wcosmos, formats)
 
@@ -360,8 +363,7 @@ def _cosmology_not_equal(cosmo1: Any, cosmo2: Any, /, *, allow_equivalent: bool=
     astropy.cosmology.cosmology_equal
         Element-wise equality check, with argument conversion to Cosmology.
     """
-    neq = not cosmology_equal(cosmo1, cosmo2, allow_equivalent=allow_equivalent)
     # TODO! it might eventually be worth the speed boost to implement some of
     #       the internals of cosmology_equal here, but for now it's a hassle.
 
-    return neq
+    return not cosmology_equal(cosmo1, cosmo2, allow_equivalent=allow_equivalent)

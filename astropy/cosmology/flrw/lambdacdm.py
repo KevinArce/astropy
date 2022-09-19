@@ -215,7 +215,7 @@ class LambdaCDM(FLRW):
 
         b = -(27. / 2) * self._Om0**2 * self._Ode0 / self._Ok0**3
         kappa = b / abs(b)
-        if (b < 0) or (2 < b):
+        if b < 0 or b > 2:
             def phi_z(Om0, Ok0, kappa, y1, A, z):
                 return np.arccos(((z + 1.0) * Om0 / abs(Ok0) + kappa * y1 - A) /
                                  ((z + 1.0) * Om0 / abs(Ok0) + kappa * y1 + A))
@@ -228,9 +228,7 @@ class LambdaCDM(FLRW):
 
             phi_z1 = phi_z(self._Om0, self._Ok0, kappa, y1, A, z1)
             phi_z2 = phi_z(self._Om0, self._Ok0, kappa, y1, A, z2)
-        # Get lower-right 0<b<2 solution in Om0, Ode0 plane.
-        # Fot the upper-left 0<b<2 solution the Big Bang didn't happen.
-        elif (0 < b) and (b < 2) and self._Om0 > self._Ode0:
+        elif b > 0 and b < 2 and self._Om0 > self._Ode0:
             def phi_z(Om0, Ok0, y1, y2, z):
                 return np.arcsin(np.sqrt((y1 - y2) /
                                          ((z + 1.0) * Om0 / abs(Ok0) + y1)))
@@ -524,8 +522,12 @@ class LambdaCDM(FLRW):
         """
         # We override this because it takes a particularly simple
         # form for a cosmological constant
-        Or = self._Ogamma0 + (self._Onu0 if not self._massivenu
-                              else self._Ogamma0 * self.nu_relative_density(z))
+        Or = self._Ogamma0 + (
+            self._Ogamma0 * self.nu_relative_density(z)
+            if self._massivenu
+            else self._Onu0
+        )
+
         zp1 = aszarr(z) + 1.0  # (converts z [unit] -> z [dimensionless])
 
         return np.sqrt(zp1 ** 2 * ((Or * zp1 + self._Om0) * zp1 + self._Ok0) + self._Ode0)
@@ -545,8 +547,12 @@ class LambdaCDM(FLRW):
             Returns `float` if the input is scalar.
             Defined such that :math:`H_z = H_0 / E`.
         """
-        Or = self._Ogamma0 + (self._Onu0 if not self._massivenu
-                              else self._Ogamma0 * self.nu_relative_density(z))
+        Or = self._Ogamma0 + (
+            self._Ogamma0 * self.nu_relative_density(z)
+            if self._massivenu
+            else self._Onu0
+        )
+
         zp1 = aszarr(z) + 1.0  # (converts z [unit] -> z [dimensionless])
 
         return (zp1 ** 2 * ((Or * zp1 + self._Om0) * zp1 + self._Ok0) + self._Ode0)**(-0.5)
@@ -653,8 +659,12 @@ class FlatLambdaCDM(FlatFLRWMixin, LambdaCDM):
         """
         # We override this because it takes a particularly simple
         # form for a cosmological constant
-        Or = self._Ogamma0 + (self._Onu0 if not self._massivenu
-                              else self._Ogamma0 * self.nu_relative_density(z))
+        Or = self._Ogamma0 + (
+            self._Ogamma0 * self.nu_relative_density(z)
+            if self._massivenu
+            else self._Onu0
+        )
+
         zp1 = aszarr(z) + 1.0  # (converts z [unit] -> z [dimensionless])
 
         return np.sqrt(zp1 ** 3 * (Or * zp1 + self._Om0) + self._Ode0)
@@ -674,7 +684,11 @@ class FlatLambdaCDM(FlatFLRWMixin, LambdaCDM):
             Returns `float` if the input is scalar.
             Defined such that :math:`H_z = H_0 / E`.
         """
-        Or = self._Ogamma0 + (self._Onu0 if not self._massivenu
-                              else self._Ogamma0 * self.nu_relative_density(z))
+        Or = self._Ogamma0 + (
+            self._Ogamma0 * self.nu_relative_density(z)
+            if self._massivenu
+            else self._Onu0
+        )
+
         zp1 = aszarr(z) + 1.0  # (converts z [unit] -> z [dimensionless])
         return (zp1 ** 3 * (Or * zp1 + self._Om0) + self._Ode0)**(-0.5)

@@ -1574,11 +1574,15 @@ def test_representation_str_multi_d():
 def test_subclass_representation():
     from astropy.coordinates.builtin_frames import ICRS
 
+
+
     class Longitude180(Longitude):
         def __new__(cls, angle, unit=None, wrap_angle=180 * u.deg, **kwargs):
-            self = super().__new__(cls, angle, unit=unit, wrap_angle=wrap_angle,
-                                   **kwargs)
-            return self
+            return super().__new__(
+                cls, angle, unit=unit, wrap_angle=wrap_angle, **kwargs
+            )
+
+
 
     class SphericalWrap180Representation(SphericalRepresentation):
         attr_classes = {'lon': Longitude180,
@@ -1667,7 +1671,10 @@ def test_duplicate_warning():
     assert 'unitspherical' in DUPLICATE_REPRESENTATIONS
     assert 'unitspherical' not in REPRESENTATION_CLASSES
     assert 'astropy.coordinates.representation.UnitSphericalRepresentation' in REPRESENTATION_CLASSES
-    assert __name__ + '.test_duplicate_warning.<locals>.UnitSphericalRepresentation' in REPRESENTATION_CLASSES
+    assert (
+        f'{__name__}.test_duplicate_warning.<locals>.UnitSphericalRepresentation'
+        in REPRESENTATION_CLASSES
+    )
 
 
 class TestCartesianRepresentationWithDifferential:
@@ -1827,12 +1834,9 @@ class TestCartesianRepresentationWithDifferential:
 
         # make sure represent_as() passes through the differentials
         for name in REPRESENTATION_CLASSES:
-            if name == 'radial':
+            if name == 'radial' or name != 'radial' and name.endswith("geodetic"):
                 # TODO: Converting a CartesianDifferential to a
                 #       RadialDifferential fails, even on `main`
-                continue
-            elif name.endswith("geodetic"):
-                # TODO: Geodetic representations do not have differentials yet
                 continue
             new_rep = rep1.represent_as(REPRESENTATION_CLASSES[name],
                                         DIFFERENTIAL_CLASSES[name])
@@ -2007,6 +2011,8 @@ def unitphysics():
         orig = PhysicsSphericalRepresentation._unit_representation
         had_unit = True
 
+
+
     class UnitPhysicsSphericalRepresentation(BaseRepresentation):
         attr_classes = {'phi': Angle,
                         'theta': Angle}
@@ -2022,9 +2028,10 @@ def unitphysics():
                 self._phi.wrap_at(360 * u.deg, inplace=True)
 
             if np.any(self._theta < 0.*u.deg) or np.any(self._theta > 180.*u.deg):
-                raise ValueError('Inclination angle(s) must be within '
-                                 '0 deg <= angle <= 180 deg, '
-                                 'got {}'.format(self._theta.to(u.degree)))
+                raise ValueError(
+                    f'Inclination angle(s) must be within 0 deg <= angle <= 180 deg, got {self._theta.to(u.degree)}'
+                )
+
 
         @property
         def phi(self):
@@ -2072,6 +2079,7 @@ def unitphysics():
         def norm(self):
             return u.Quantity(np.ones(self.shape), u.dimensionless_unscaled,
                               copy=False)
+
 
     PhysicsSphericalRepresentation._unit_representation = UnitPhysicsSphericalRepresentation
     yield UnitPhysicsSphericalRepresentation
@@ -2129,14 +2137,16 @@ def test_dtype_preservation_in_indexing():
 
 
 class TestInfo:
-    def setup_class(cls):
-        cls.rep = SphericalRepresentation([0, 1]*u.deg, [2, 3]*u.deg,
-                                          10*u.pc)
-        cls.diff = SphericalDifferential([10, 20]*u.mas/u.yr,
-                                         [30, 40]*u.mas/u.yr,
-                                         [50, 60]*u.km/u.s)
-        cls.rep_w_diff = SphericalRepresentation(cls.rep,
-                                                 differentials=cls.diff)
+    def setup_class(self):
+        self.rep = SphericalRepresentation(
+            [0, 1] * u.deg, [2, 3] * u.deg, 10 * u.pc
+        )
+
+        self.diff = SphericalDifferential(
+            [10, 20] * u.mas / u.yr, [30, 40] * u.mas / u.yr, [50, 60] * u.km / u.s
+        )
+
+        self.rep_w_diff = SphericalRepresentation(self.rep, differentials=self.diff)
 
     def test_info_unit(self):
         assert self.rep.info.unit == 'deg, deg, pc'
@@ -2161,7 +2171,7 @@ class TestInfo:
 def test_differential_norm_noncartesian(cls):
     # The norm of a non-Cartesian differential without specifying `base` should error
     rep = cls(0, 0, 0)
-    with pytest.raises(ValueError, match=r"`base` must be provided .* " + cls.__name__):
+    with pytest.raises(ValueError, match=f"`base` must be provided .* {cls.__name__}"):
         rep.norm()
 
 

@@ -10,14 +10,9 @@ import astropy  # noqa
 
 if len(sys.argv) == 3 and sys.argv[1] == '--astropy-root':
     ROOT = sys.argv[2]
-else:
-    # Make sure we don't allow any arguments to be passed - some tests call
-    # sys.executable which becomes this script when producing a pyinstaller
-    # bundle, but we should just error in this case since this is not the
-    # regular Python interpreter.
-    if len(sys.argv) > 1:
-        print("Extra arguments passed, exiting early")
-        sys.exit(1)
+elif len(sys.argv) > 1:
+    print("Extra arguments passed, exiting early")
+    sys.exit(1)
 
 for root, dirnames, files in os.walk(os.path.join(ROOT, 'astropy')):
 
@@ -26,7 +21,7 @@ for root, dirnames, files in os.walk(os.path.join(ROOT, 'astropy')):
     # as we only want to change the one which is for the module, so instead
     # we search for the last occurrence and replace that.
     pos = root.rfind('astropy')
-    test_root = root[:pos] + 'astropy_tests' + root[pos + 7:]
+    test_root = f'{root[:pos]}astropy_tests{root[pos + 7:]}'
 
     # Copy over the astropy 'tests' directories and their contents
     for dirname in dirnames:
@@ -104,10 +99,18 @@ SKIP_TESTS = ['test_exception_logging_origin',
               'test_download_parallel_fills_cache']
 
 # Run the tests!
-sys.exit(pytest.main(['astropy_tests',
-                      '-k ' + ' and '.join('not ' + test for test in SKIP_TESTS)],
-                     plugins=['pytest_astropy.plugin',
-                              'pytest_doctestplus.plugin',
-                              'pytest_openfiles.plugin',
-                              'pytest_remotedata.plugin',
-                              'pytest_astropy_header.display']))
+sys.exit(
+    pytest.main(
+        [
+            'astropy_tests',
+            '-k ' + ' and '.join(f'not {test}' for test in SKIP_TESTS),
+        ],
+        plugins=[
+            'pytest_astropy.plugin',
+            'pytest_doctestplus.plugin',
+            'pytest_openfiles.plugin',
+            'pytest_remotedata.plugin',
+            'pytest_astropy_header.display',
+        ],
+    )
+)

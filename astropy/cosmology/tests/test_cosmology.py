@@ -152,7 +152,7 @@ def test_distance_broadcast():
 
     # Test some dark energy models
     methods = ['Om', 'Ode', 'w', 'de_density_scale']
-    for tcosmo in [flrw.LambdaCDM(H0=70, Om0=0.27, Ode0=0.5),
+    for _ in [flrw.LambdaCDM(H0=70, Om0=0.27, Ode0=0.5),
                    flrw.wCDM(H0=70, Om0=0.27, Ode0=0.5, w0=-1.2),
                    flrw.w0waCDM(H0=70, Om0=0.27, Ode0=0.5, w0=-1.2, wa=-0.2),
                    flrw.wpwaCDM(H0=70, Om0=0.27, Ode0=0.5,

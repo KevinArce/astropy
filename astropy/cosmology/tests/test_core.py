@@ -224,7 +224,7 @@ class TestCosmology(ParameterTestMixin, MetaTestMixin,
 
         # now change a different parameter and see how 'name' changes
         c = cosmo.clone(meta={"test_clone_name": True})
-        assert c.name == cosmo.name + " (modified)"
+        assert c.name == f"{cosmo.name} (modified)"
 
     def test_clone_meta(self, cosmo):
         """Test method ``.clone()`` meta argument: updates meta, doesn't clear."""
@@ -272,12 +272,12 @@ class TestCosmology(ParameterTestMixin, MetaTestMixin,
     def test_equality(self, cosmo):
         """Test method ``.__eq__()."""
         # wrong class
-        assert (cosmo != 2) and (2 != cosmo)
+        assert cosmo != 2 != cosmo
         # correct
         assert cosmo == cosmo
         # different name <= not equal, but equivalent
         newcosmo = cosmo.clone(name="test_equality")
-        assert (cosmo != newcosmo) and (newcosmo != cosmo)
+        assert cosmo != newcosmo != cosmo
         assert cosmo.__equiv__(newcosmo) and newcosmo.__equiv__(cosmo)
 
     # ---------------------------------------------------------------

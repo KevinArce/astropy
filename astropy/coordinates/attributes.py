@@ -96,7 +96,7 @@ class Attribute:
         if instance is None:
             out = self.default
         else:
-            out = getattr(instance, '_' + self.name, self.default)
+            out = getattr(instance, f'_{self.name}', self.default)
             if out is None:
                 out = getattr(instance, self.secondary_attribute, self.default)
 
@@ -115,14 +115,14 @@ class Attribute:
                 except ValueError:
                     # raise more informative exception.
                     raise ValueError(
-                        "attribute {} should be scalar or have shape {}, "
-                        "but is has shape {} and could not be broadcast."
-                        .format(self.name, instance_shape, out.shape))
+                        f"attribute {self.name} should be scalar or have shape {instance_shape}, but is has shape {out.shape} and could not be broadcast."
+                    )
+
 
                 converted = True
 
             if converted:
-                setattr(instance, '_' + self.name, out)
+                setattr(instance, f'_{self.name}', out)
 
         return out
 
@@ -236,24 +236,24 @@ class CartesianRepresentationAttribute(Attribute):
         if (isinstance(value, list) and len(value) == 3 and
                 all(v == 0 for v in value) and self.unit is not None):
             return CartesianRepresentation(np.zeros(3) * self.unit), True
-        else:
-            # is it a CartesianRepresentation with correct unit?
-            if hasattr(value, 'xyz') and value.xyz.unit == self.unit:
-                return value, False
+        # is it a CartesianRepresentation with correct unit?
+        if hasattr(value, 'xyz') and value.xyz.unit == self.unit:
+            return value, False
 
-            converted = True
-            # if it's a CartesianRepresentation, get the xyz Quantity
-            value = getattr(value, 'xyz', value)
-            if not hasattr(value, 'unit'):
-                raise TypeError('tried to set a {} with something that does '
-                                'not have a unit.'
-                                .format(self.__class__.__name__))
+        converted = True
+        # if it's a CartesianRepresentation, get the xyz Quantity
+        value = getattr(value, 'xyz', value)
+        if not hasattr(value, 'unit'):
+            raise TypeError(
+                f'tried to set a {self.__class__.__name__} with something that does not have a unit.'
+            )
 
-            value = value.to(self.unit)
 
-            # now try and make a CartesianRepresentation.
-            cartrep = CartesianRepresentation(value, copy=False)
-            return cartrep, converted
+        value = value.to(self.unit)
+
+        # now try and make a CartesianRepresentation.
+        cartrep = CartesianRepresentation(value, copy=False)
+        return cartrep, converted
 
 
 class QuantityAttribute(Attribute):
@@ -388,9 +388,10 @@ class EarthLocationAttribute(Attribute):
             from .builtin_frames import ITRS
 
             if not hasattr(value, 'transform_to'):
-                raise ValueError('"{}" was passed into an '
-                                 'EarthLocationAttribute, but it does not have '
-                                 '"transform_to" method'.format(value))
+                raise ValueError(
+                    f'"{value}" was passed into an EarthLocationAttribute, but it does not have "transform_to" method'
+                )
+
             itrsobj = value.transform_to(ITRS())
             return itrsobj.earth_location, True
 
@@ -509,11 +510,10 @@ class DifferentialAttribute(Attribute):
             if len(self.allowed_classes) == 1:
                 value = self.allowed_classes[0](value)
             else:
-                raise TypeError('Tried to set a DifferentialAttribute with '
-                                'an unsupported Differential type {}. Allowed '
-                                'classes are: {}'
-                                .format(value.__class__,
-                                        self.allowed_classes))
+                raise TypeError(
+                    f'Tried to set a DifferentialAttribute with an unsupported Differential type {value.__class__}. Allowed classes are: {self.allowed_classes}'
+                )
+
 
         return value, True
 

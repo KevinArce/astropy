@@ -31,7 +31,7 @@ def __getattr__(attr):
         warnings.warn(msg, AstropyDeprecationWarning)
 
         if attr in base_attrs:
-            return getattr(base, "_" + attr)
+            return getattr(base, f"_{attr}")
         elif attr == "quad":
             return getattr(base, attr)
         elif attr in ("ellipkinc", "hyp2f1"):

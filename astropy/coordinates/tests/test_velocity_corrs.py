@@ -149,10 +149,12 @@ def test_helio_iraf():
     2457244.49722     0.00     2.29    11.75     -0.115   -0.004    2.413    9.459
     2457244.49805     0.00     6.84    16.77     -0.034   -0.001    6.874    9.935
     """
-    vhs_iraf = []
-    for line in rvcorr_result.strip().split('\n'):
-        if not line.strip().startswith('#'):
-            vhs_iraf.append(float(line.split()[2]))
+    vhs_iraf = [
+        float(line.split()[2])
+        for line in rvcorr_result.strip().split('\n')
+        if not line.strip().startswith('#')
+    ]
+
     vhs_iraf = vhs_iraf*u.km/u.s
 
     targets = SkyCoord(_get_test_input_radecs(), obstime=test_input_time,
@@ -168,11 +170,11 @@ def generate_IRAF_input(writefn=None):
     coos = _get_test_input_radecs()
 
     lines = []
+    msg = '{yr} {mo} {day} {uth}:{utmin} {ra} {dec}'
     for ra, dec in zip(coos.ra, coos.dec):
         rastr = Angle(ra).to_string(u.hour, sep=':')
         decstr = Angle(dec).to_string(u.deg, sep=':')
 
-        msg = '{yr} {mo} {day} {uth}:{utmin} {ra} {dec}'
         lines.append(msg.format(yr=dt.year, mo=dt.month, day=dt.day,
                                 uth=dt.hour, utmin=dt.minute,
                                 ra=rastr, dec=decstr))
